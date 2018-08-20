@@ -1,0 +1,99 @@
+.supercluster{
+  .point-icon{
+    height: 100%;
+    display: block;
+    border-radius: 50%;
+    background: rgb(255, 127, 80);
+    border: 2px solid #FFF;
+    font-weight: 700;
+    position: relative;
+
+    .pulsate{
+      display: none;
+    }
+  }
+
+  .cluster-icon{
+    height: 100%;
+    display: block;
+    border-radius: 50%;
+    background: rgb(255, 127, 80);
+    text-align: center;
+    padding-top: 12px;
+    color: #fff;
+    font-weight: 700;
+    border: 2px solid #fff;
+
+    &.opened {
+      opacity: 0.3;
+    }
+  }
+
+  &.animate-add {
+    .point-icon{
+      animation: supercluster-show 300ms;
+
+      .pulsate{
+        width: 25px;
+        height: 25px;
+        top: -7.5px;
+        left: -7.5px;
+        position: absolute;
+        display: block;
+        background: rgba(255, 127, 80, 0.6);
+        border-radius: 50%;
+        opacity: 0;
+        animation: supercluster-pulsate 2400ms ease-out infinite;
+      }
+    }
+
+    .cluster-icon{
+      animation: supercluster-show 300ms;
+    }
+  }
+
+  &.animate-remove{
+    .cluster-icon, .point-icon{
+      animation: supercluster-removed 1s cubic-bezier(0.55, -0.04, 0.91, 0.94) forwards;
+      transform-origin: 0% 100%;
+    }
+  }
+}
+
+@keyframes supercluster-removed {
+  0% {
+    opacity: 1;
+    transform: rotateZ(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(600px) rotateZ(90deg);
+  }
+}
+
+@keyframes supercluster-show {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes supercluster-pulsate {
+  0% {
+    transform: scale(0.1);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+

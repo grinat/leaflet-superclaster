@@ -1,0 +1,58 @@
+# leaflet-superclaster
+
+```js
+import * as L from 'leaflet'
+import {SuperclusterGroup} from 'leaflet-superclaster'
+
+// import from 'leaflet-superclaster/dist/supercluster.css'
+
+this.superclusterGroup = new SuperclusterGroup().addTo(this.map)
+this.superclusterGroup.on('point.click', function({parentLayer, layer, target}) {
+            let popup = layer.getPopup()
+            if (!popup) {
+              popup = L.popup({
+                autoClose: false,
+                closeOnClick: false,
+                autoPan: false
+              }).setContent(JSON.stringify(layer.feature.properties))
+              layer.bindPopup(popup).openPopup()
+            }
+})
+
+this.superclusterGroup.on('layer.updated', function ({layer}) {
+            const popup = layer.getPopup()
+            if (popup && popup.isOpen()) {
+              popup.setContent(JSON.stringify(layer.feature.properties))
+            }
+})
+          
+const features = [{
+  properties: {
+    // !! id in properties are required
+    // used for redraw markers which changes the position
+    id: 1
+  },
+  type: "Feature",
+  geometry: {type: "Point", coordinates: [45, 66]}
+}]
+this.superclusterGroup.loadGeoJsonData(features)
+```
+
+## Methods
+
+```
+loadGeoJsonData(features) - set markers positions
+keepPoint(id) - Save point id for keep in view useful if appended popup with keepView optio
+unKeepPoint(id) - 
+```
+
+## Events
+
+
+| name            | params                     | desciption |
+| -------------   |:-------------:             | -----:|
+| point.click     | parentLayer, layer, target | Fired on click by point |
+| layer.updated   | layer, target              | fired on layer position(lat, lng) was updated |
+| draw            | layer, target                      | fired after markers draw, return layers with markers |
+
+
