@@ -25,19 +25,23 @@ module.exports = {
         }
       },
       {
-        test: /\.css|\.scss$/,
+        test: /\.(css|sass|scss)$/,
         use: [
           MiniCssExtractPlugin.loader,
-          'css-loader'
+          // 'style-loader',
+          'css-loader',
+          'sass-loader'
         ]
       },
-      /*{
-        test: /\.scss$/,
-        use: [
-          MiniCssExtractPlugin.loader,
-          'css-loader'
-        ]
-      }*/
+      {
+        test: /Worker\.js$/,
+        use: {
+          loader: 'worker-loader',
+          options: {
+            inline: true
+          }
+        }
+      },
     ]
   },
   plugins: [
@@ -45,6 +49,9 @@ module.exports = {
       filename: 'supercluster.css'
     })
   ],
+  externals: {
+    leaflet: 'L'
+  },
   optimization: {
     minimizer: [
       new TerserPlugin({
@@ -58,3 +65,4 @@ module.exports = {
   },
   devtool: 'source-map'
 }
+

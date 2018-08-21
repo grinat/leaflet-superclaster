@@ -1,9 +1,10 @@
 import * as L from 'leaflet'
-import SuperclusterWorker from 'worker-loader!./SuperclusterWorker'
+// import SuperclusterWorker from 'worker-loader!./SuperclusterWorker'
+import SuperclusterWorker from './SuperclusterWorker'
 
-//import './supercluster.scss'
+import './supercluster.scss'
 
-export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
+export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   options: {
     clusterIconFunc: null,
     pointIconFunc: null,
@@ -15,7 +16,7 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     moveToLastKept: true,
     clusterzIndexOffset: 1000,
     pointzIndexOffset: 8000,
-    animated: false,
+    animated: true,
     supercluster: {
       radius: 60,
       extent: 256,
@@ -28,11 +29,12 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _worker: null,
   _map: null,
   _keptPointIds: [],
-  _initWorker: function () {
+  _initWorker () {
     this._worker = new SuperclusterWorker()
     this._worker.onmessage = (d) => this._onWorkerMessage(d)
+    this._worker.onerror = e => console.warn(e)
   },
-  _createGeoJsonLayer: function () {
+  _createGeoJsonLayer () {
     this._geoJsonLayer = L.geoJson(null, {
       pointToLayer: (feature, latlng) => {
         return L.marker(latlng, {
@@ -63,7 +65,7 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       this.unKeepPoint(layer.feature.properties.id)
     })
   },
-  _deleteLayerFromGeoJsonLayer: function (l) {
+  _deleteLayerFromGeoJsonLayer (l) {
     if (l._openedClusterLayer) {
       this._map.removeLayer(l._openedClusterLayer)
       l._openedClusterLayer = null
@@ -76,7 +78,7 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     // l.remove() // <-- not worked corectly
     this._geoJsonLayer.removeLayer(l)
   },
-  _geoJsonClick: function ({latlng, layer}) {
+  _geoJsonClick ({latlng, layer}) {
     if (layer.feature.properties.cluster) {
       // on cluster click
       const isMaxZoom = this._map.getZoom() >= this._map.getMaxZoom()
@@ -104,19 +106,19 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
    * @param layer - marker layer
    * @private
    */
-  _onPointClick: function (parentLayer, layer) {
+  _onPointClick (parentLayer, layer) {
     this.fire('point.click', {parentLayer, layer})
   },
-  _zoomEnd: function () {
+  _zoomEnd () {
     this._clusteringData()
   },
-  _moveEnd: function () {
+  _moveEnd () {
     this._clusteringData()
   },
-  _clusteringData: function () {
-    let bounds = this._map.getBounds()
-    let bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]
-    let zoom = this._map.getZoom()
+  _clusteringData () {
+    const bounds = this._map.getBounds()
+    const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]
+    const zoom = this._map.getZoom()
 
     this._sendMessage('clusteringData', {
       zoom,
@@ -124,7 +126,7 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       keptPointIds: this._keptPointIds
     })
   },
-  _sendMessage: function (action, data = {}) {
+  _sendMessage (action, data = {}) {
     const message = {
       action,
       data,
@@ -137,7 +139,7 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     }
     this._worker.postMessage(message)
   },
-  loadGeoJsonData: function (featuresOrFutureCollection) {
+  loadGeoJsonData (featuresOrFutureCollection) {
     let features = []
     if (Array.isArray(featuresOrFutureCollection)) {
       features = featuresOrFutureCollection
@@ -146,13 +148,13 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     }
     this._sendMessage('loadFeatures', {features})
   },
-  keepPoint: function (id) {
+  keepPoint (id) {
     if (this._keptPointIds.indexOf(id) > -1) {
       return
     }
     this._keptPointIds.push(id)
   },
-  unKeepPoint: function (id) {
+  unKeepPoint (id) {
     if (this._keptPointIds.length > 0) {
       this._keptPointIds = this._keptPointIds.filter(v => v !== id)
       // if we click on point is kept
@@ -161,7 +163,7 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       this._clusteringData()
     }
   },
-  moveToLastKept: function () {
+  moveToLastKept () {
     console.log('move to last')
     const layers = this._geoJsonLayer.getLayers()
 
@@ -181,7 +183,7 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       this._map.setView(bounds.getCenter())
     }
   },
-  _onWorkerMessage: function ({data}) {
+  _onWorkerMessage ({data}) {
     console.log('_onWorkerMessage', data.action, data)
     switch (data.action) {
       case 'dataClustered':
@@ -198,10 +200,10 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
         break
     }
   },
-  _expansionZoom: function ({latlng, zoom}) {
+  _expansionZoom ({latlng, zoom}) {
     this._map.setView(latlng, zoom)
   },
-  _drawItems: function (features) {
+  _drawItems (features) {
     const layers = this._geoJsonLayer.getLayers()
     const len = layers.length
 
@@ -263,7 +265,7 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     this.fire('draw', {layer: this._geoJsonLayer})
   },
-  _removeOrUpdateLayer: function (l, featureIdMap, propKey) {
+  _removeOrUpdateLayer (l, featureIdMap, propKey) {
     const id = l.feature.properties[propKey]
     if (featureIdMap[id]) {
       // update marker pos
@@ -293,7 +295,7 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       this._deleteLayerFromGeoJsonLayer(l)
     }
   },
-  _clusterIconFunc: function (feature) {
+  _clusterIconFunc (feature) {
     return new L.DivIcon({
       className: 'supercluster size-36x36',
       html: `<div class="cluster-icon">${feature.properties.point_count}</div>`,
@@ -301,7 +303,7 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       iconAnchor: [22, 22]
     })
   },
-  _pointIconFunc: function () {
+  _pointIconFunc () {
     return new L.DivIcon({
       className: 'supercluster size-20x20',
       html: '<div class="point-icon"><div class="pulsate"></div></div>',
@@ -312,7 +314,7 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   /**
    * @override
    */
-  initialize: function (options) {
+  initialize (options) {
     L.Util.setOptions(this, options)
 
     this.options.clusterIconFunc = this.options.clusterIconFunc || this._clusterIconFunc
@@ -323,7 +325,7 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   /**
    * @override
    */
-  onAdd: function (map) {
+  onAdd (map) {
     this._map = map
 
     if (!this.options.supercluster.maxZoom) {
@@ -349,13 +351,13 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   /**
    * @override
    */
-  onRemove: function (map) {
+  onRemove (map) {
     map.off('zoomend', this._zoomEnd, this)
     map.off('moveend', this._moveEnd, this)
 
     this._geoJsonLayer.clearLayers()
   },
-  _updateClusterLayer: function (layer) {
+  _updateClusterLayer (layer) {
     if (!layer._openedClusterLayer) {
       return
     }
@@ -370,7 +372,7 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       clusterId
     })
   },
-  _closeCluster: function (layer) {
+  _closeCluster (layer) {
     this._map.removeLayer(layer._openedClusterLayer)
     layer._openedClusterLayer = null
 
@@ -378,10 +380,10 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       layer._icon.classList.remove('opened')
     }
   },
-  _openCluster: function ({clusterId, features}) {
+  _openCluster ({clusterId, features}) {
     const layers = this._geoJsonLayer.getLayers()
 
-    let parentLayer = layers.find(l => l.feature.properties.cluster_id === clusterId)
+    const parentLayer = layers.find(l => l.feature.properties.cluster_id === clusterId)
     if (!parentLayer) {
       return
     }
@@ -428,17 +430,17 @@ export var SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       parentLayer._icon.classList.add('opened')
     }
   },
-  _animatedAdd: function (l) {
+  _animatedAdd (l) {
     if (l._icon && l._icon.classList) {
       l._icon.classList.add('animate-add')
     }
   },
-  _animatedRemove: function (l) {
+  _animatedRemove (l) {
     if (l._icon && l._icon.classList) {
       const el = l._icon.cloneNode(true)
       el.classList.add('animate-remove')
       this._map.getPane('markerPane').appendChild(el)
-      setTimeout(function () {
+      setTimeout(() => {
         el.parentNode.removeChild(el)
       }, 1000)
     }

@@ -1,6 +1,11 @@
 .supercluster{
+  div {
+    box-sizing: border-box;
+  }
+
   .point-icon{
     height: 100%;
+    width: 100%;
     display: block;
     border-radius: 50%;
     background: rgb(255, 127, 80);
@@ -15,6 +20,7 @@
 
   .cluster-icon{
     height: 100%;
+    width: 100%;
     display: block;
     border-radius: 50%;
     background: rgb(255, 127, 80);
