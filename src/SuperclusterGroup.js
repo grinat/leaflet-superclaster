@@ -1,5 +1,6 @@
 import * as L from 'leaflet'
 // import SuperclusterWorker from 'worker-loader!./SuperclusterWorker'
+// eslint-disable-next-line import/default
 import SuperclusterWorker from './SuperclusterWorker'
 
 import './supercluster.scss'
@@ -12,6 +13,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     optimizeRedrawPoints: true,
     appendChildIdsToCluster: false,
     showClustersOnMaxZoom: false,
+    showMarkersBeforeMaxZoom: 1,
     bboxIncreasePer: 0,
     moveToLastKept: true,
     clusterzIndexOffset: 1000,
@@ -69,10 +71,6 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     if (l._openedClusterLayer) {
       this._map.removeLayer(l._openedClusterLayer)
       l._openedClusterLayer = null
-    }
-
-    if (this.options.animated === true) {
-      this._animatedRemove(l)
     }
 
     // l.remove() // <-- not worked corectly
@@ -187,7 +185,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     console.log('_onWorkerMessage', data.action, data)
     switch (data.action) {
       case 'dataClustered':
-        this._drawItems(data.features)
+        this._drawItems(data.features, data.zoom)
         break
       case 'load':
         this._clusteringData(data)
@@ -203,7 +201,13 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _expansionZoom ({latlng, zoom}) {
     this._map.setView(latlng, zoom)
   },
-  _drawItems (features) {
+  _drawItems (features, zoom) {
+    const currentZoom = this._map.getZoom()
+    if (currentZoom !== zoom) {
+      // skip redraw data if user fast change zoom
+      return
+    }
+
     const layers = this._geoJsonLayer.getLayers()
     const len = layers.length
 
@@ -297,7 +301,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   },
   _clusterIconFunc (feature) {
     return new L.DivIcon({
-      className: 'supercluster size-36x36',
+      className: 'supercluster',
       html: `<div class="cluster-icon">${feature.properties.point_count}</div>`,
       iconSize: [44, 44],
       iconAnchor: [22, 22]
@@ -305,7 +309,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   },
   _pointIconFunc () {
     return new L.DivIcon({
-      className: 'supercluster size-20x20',
+      className: 'supercluster',
       html: '<div class="point-icon"><div class="pulsate"></div></div>',
       iconSize: [14, 14],
       iconAnchor: [7, 7]
@@ -332,7 +336,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       this.options.supercluster.maxZoom = this._map.getMaxZoom()
 
       if (!this.options.showClustersOnMaxZoom) {
-        this.options.supercluster.maxZoom = this._map.getMaxZoom() - 1
+        this.options.supercluster.maxZoom = this._map.getMaxZoom() - this.options.showMarkersBeforeMaxZoom
       }
     }
 
@@ -433,16 +437,6 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _animatedAdd (l) {
     if (l._icon && l._icon.classList) {
       l._icon.classList.add('animate-add')
-    }
-  },
-  _animatedRemove (l) {
-    if (l._icon && l._icon.classList) {
-      const el = l._icon.cloneNode(true)
-      el.classList.add('animate-remove')
-      this._map.getPane('markerPane').appendChild(el)
-      setTimeout(() => {
-        el.parentNode.removeChild(el)
-      }, 1000)
     }
   }
 })

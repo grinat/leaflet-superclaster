@@ -1,19 +1,28 @@
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const TerserPlugin = require('terser-webpack-plugin')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+
+const mode = process.env.NODE_ENV || 'development'
+const prod = mode === 'production'
+const externals = prod ? {leaflet: 'L'} : {}
+const library = prod ? 'amd' : undefined
 
 module.exports = {
   entry: {
-    bundle: ['./src/SuperclusterGroup.js']
+    bundle: [
+      prod ? './src/SuperclusterGroup.js' : './src/develop/watch.js'
+    ]
   },
   resolve: {
     extensions: ['.js']
   },
-  mode: 'production',
+  mode,
   output: {
     path: __dirname + '/dist',
     filename: 'leaflet-superclaster.js',
     chunkFilename: 'leaflet-superclaster.js',
-    library: 'amd'
+    library,
+    publicPath: '/'
   },
   module: {
     rules: [
@@ -27,8 +36,7 @@ module.exports = {
       {
         test: /\.(css|sass|scss)$/,
         use: [
-          MiniCssExtractPlugin.loader,
-          // 'style-loader',
+          prod ? MiniCssExtractPlugin.loader : 'style-loader',
           'css-loader',
           'sass-loader'
         ]
@@ -42,16 +50,46 @@ module.exports = {
           }
         }
       },
+      {
+        test: /\.(png|jpe?g|gif|webp)(\?.*)?$/,
+        use: [
+          {
+            loader: 'url-loader',
+            options: {
+              limit: 4096,
+              fallback: {
+                loader: 'file-loader',
+                options: {
+                  name: 'img/[name].[hash:8].[ext]'
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        test: /\.(svg)(\?.*)?$/,
+        use: [
+          {
+            loader: 'file-loader',
+            options: {
+              name: 'img/[name].[hash:8].[ext]'
+            }
+          }
+        ]
+      }
     ]
   },
   plugins: [
+    new HtmlWebpackPlugin({
+      minify: false,
+      template: 'src/develop/watch.html'
+    }),
     new MiniCssExtractPlugin({
       filename: 'supercluster.css'
     })
   ],
-  externals: {
-    leaflet: 'L'
-  },
+  externals,
   optimization: {
     minimizer: [
       new TerserPlugin({

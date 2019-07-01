@@ -134,7 +134,9 @@ function clusteringData({keptPointIds = [], bbox, zoom}, {bboxIncreasePer, appen
   console.log(keptPointIds)
 
   sendMessage('dataClustered', {
-    features
+    features,
+    zoom,
+    bbox
   })
 }
 
