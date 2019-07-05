@@ -1,0 +1,24 @@
+.leaflet-popup{
+  // transition: transform 300ms linear!important;
+}
+
+body{
+  margin: 0;
+  padding: 0;
+}
+
+#map{
+  height: 100vh;
+  width: 100vw;
+}
+
+.panel{
+  position: absolute;
+  right: 0;
+  bottom: 50px;
+  z-index: 20000;
+
+  button {
+    font-size: 1.2em;
+  }
+}

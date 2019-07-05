@@ -1,6 +1,7 @@
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const TerserPlugin = require('terser-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+const webpack = require('webpack')
 
 const mode = process.env.NODE_ENV || 'development'
 const prod = mode === 'production'
@@ -87,6 +88,9 @@ module.exports = {
     }),
     new MiniCssExtractPlugin({
       filename: 'supercluster.css'
+    }),
+    new webpack.DefinePlugin({
+      'process.env': {}
     })
   ],
   externals,
@@ -96,6 +100,7 @@ module.exports = {
         terserOptions: {
           compress: {
             evaluate: false,
+            drop_console: true
           }
         }
       })

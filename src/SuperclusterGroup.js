@@ -11,17 +11,25 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     pointIconFunc: null,
     optimizeRedrawClusters: true,
     optimizeRedrawPoints: true,
+    optimizeRedrawPointsInOpenedCluster: true,
     appendChildIdsToCluster: false,
-    showClustersOnMaxZoom: false,
+    showClustersOnMaxZoom: true,
+    showedSubClusterMultiplier: 2,
     showMarkersBeforeMaxZoom: 1,
     bboxIncreasePer: 0,
-    moveToLastKept: true,
+    moveToLastKept: false,
+    moveToLastKeptBoundsMultiplier: 0.3,
     clusterzIndexOffset: 1000,
     pointzIndexOffset: 8000,
-    animated: true,
+    maxMarkersInClusterOnOnePoint: 250,
+    animated: false,
+    legsStyle: {
+      weight: 1,
+      color: '#707070'
+    },
     supercluster: {
       radius: 60,
-      extent: 256,
+      extent: 180,
       minZoom: null,
       maxZoom: null,
       log: true
@@ -34,7 +42,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _initWorker () {
     this._worker = new SuperclusterWorker()
     this._worker.onmessage = (d) => this._onWorkerMessage(d)
-    this._worker.onerror = e => console.warn(e)
+    this._worker.onerror = e => this.fire('error', e)
   },
   _createGeoJsonLayer () {
     this._geoJsonLayer = L.geoJson(null, {
@@ -52,28 +60,27 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     this._geoJsonLayer.on('click', this._geoJsonClick, this)
 
-    this._geoJsonLayer.on('layeradd', ({layer}) => {
-      if (this.options.animated === true) {
-       this._animatedAdd(layer)
-      }
-    })
-    this._geoJsonLayer.on('layerremove', ({layer}) => {
-      this.unKeepPoint(layer.feature.properties.id)
-    })
-    this._geoJsonLayer.on('popupopen', ({layer}) => {
-      this.keepPoint(layer.feature.properties.id)
-    })
-    this._geoJsonLayer.on('popupclose', ({layer}) => {
-      this.unKeepPoint(layer.feature.properties.id)
-    })
-  },
-  _deleteLayerFromGeoJsonLayer (l) {
-    if (l._openedClusterLayer) {
-      this._map.removeLayer(l._openedClusterLayer)
-      l._openedClusterLayer = null
+    if (this.options.moveToLastKept) {
+      this._geoJsonLayer.on('layerremove', ({layer}) => {
+        this._checkAndUnKeepPoint(layer)
+      })
+      this._geoJsonLayer.on('popupclose', ({layer}) => {
+        this._checkAndUnKeepPoint(layer)
+      })
+      this._geoJsonLayer.on('popupopen', ({layer}) => {
+        this._checkAndKeepPoint(layer)
+      })
     }
 
-    // l.remove() // <-- not worked corectly
+    if (this.options.animated === true) {
+      this._geoJsonLayer.on('layeradd', ({layer}) => {
+        this._animatedAdd(layer)
+      })
+    }
+  },
+  _deleteLayerFromGeoJsonLayer (l) {
+    this._recursiveRemoveAllOpenedClusterLayer(l)
+
     this._geoJsonLayer.removeLayer(l)
   },
   _geoJsonClick ({latlng, layer}) {
@@ -146,14 +153,26 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     }
     this._sendMessage('loadFeatures', {features})
   },
+  _checkAndKeepPoint (layer) {
+    if (layer instanceof L.Marker && !layer.feature.properties.subCluster) {
+      this.keepPoint(layer.feature.properties.id)
+    }
+  },
+  _checkAndUnKeepPoint (layer) {
+    if (layer instanceof L.Marker && !layer.feature.properties.subCluster) {
+      this.unKeepPoint(layer.feature.properties.id)
+    }
+  },
   keepPoint (id) {
     if (this._keptPointIds.indexOf(id) > -1) {
       return
     }
+    console.log('keepPoint', id)
     this._keptPointIds.push(id)
   },
   unKeepPoint (id) {
     if (this._keptPointIds.length > 0) {
+      console.log('unKeepPoint', id)
       this._keptPointIds = this._keptPointIds.filter(v => v !== id)
       // if we click on point is kept
       // if we minimize zoom, kep point remove from cluster
@@ -175,8 +194,10 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       return
     }
 
-    const bounds = L.latLngBounds(layer.getLatLng().toBounds(100))
+    const {distMin} = this._getDistanceFromMapCenter()
+    const bounds = L.latLngBounds(layer.getLatLng().toBounds(distMin * this.options.moveToLastKeptBoundsMultiplier))
     const lastInView = this._map.getBounds().contains(bounds)
+
     if (!lastInView) {
       this._map.setView(bounds.getCenter())
     }
@@ -293,7 +314,9 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
       this.fire('layer.updated', {layer: l})
 
-      this._updateClusterLayer(l)
+      this.options.animated && this._animatedMove(l)
+
+      this._updateMarkersInOpenedClusterLayer(l)
     } else {
       // layer not exist in featureMap
       this._deleteLayerFromGeoJsonLayer(l)
@@ -361,14 +384,10 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     this._geoJsonLayer.clearLayers()
   },
-  _updateClusterLayer (layer) {
+  _updateMarkersInOpenedClusterLayer (layer) {
     if (!layer._openedClusterLayer) {
       return
     }
-
-    // remove all and reopen?
-    this._map.removeLayer(layer._openedClusterLayer)
-    layer._openedClusterLayer = null
 
     // refresh all markers
     const clusterId = layer.feature.properties.cluster_id
@@ -377,11 +396,106 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     })
   },
   _closeCluster (layer) {
-    this._map.removeLayer(layer._openedClusterLayer)
-    layer._openedClusterLayer = null
+    this._recursiveRemoveAllOpenedClusterLayer(layer)
 
     if (layer._icon) {
       layer._icon.classList.remove('opened')
+    }
+  },
+  _getLegsForMarkersInCluster (parentCenter, features) {
+    const parentCenterGeometry = [parentCenter.lng, parentCenter.lat]
+
+    const legs = []
+    const len = features.length
+    for (let i = 0; i < len; i++) {
+      legs.push({
+        type: 'LineString',
+        coordinates: [
+          features[i].geometry.coordinates, parentCenterGeometry
+        ]
+      })
+    }
+
+    return legs
+  },
+  _updateMarkersInCluster (parentLayer, features, legs) {
+    // create map from exist layers
+    const featureIdMap = {}
+
+    const len = features.length
+    for (let i = 0; i < len; i++) {
+      featureIdMap[features[i].properties.id] = features[i]
+    }
+
+    // update or remove marker positions
+    const subLayers = parentLayer._openedClusterLayer.getLayers()
+    const subLen = subLayers.length
+    for (let i = 0; i < subLen; i++) {
+      const l = subLayers[i]
+      const id = l.feature.properties.id
+
+      if (featureIdMap[id]) {
+        l.setLatLng(
+          new L.LatLng(featureIdMap[id].geometry.coordinates[1], featureIdMap[id].geometry.coordinates[0])
+        )
+        l.feature = featureIdMap[id]
+        this.fire('layer.updated', {layer: l})
+      } else {
+        parentLayer._openedClusterLayer.removeLayer(l)
+      }
+    }
+
+    // insert legs to markers
+    parentLayer._openedClusterLayer.addData(legs)
+  },
+  _createMarkersInCluster (parentLayer, features, legs) {
+    parentLayer._openedClusterLayer = L.geoJson([
+      ...features, ...legs
+    ], {
+      pointToLayer: (feature, latlng) => {
+        if (feature.properties.subCluster) {
+          return L.marker(latlng, {
+            zIndexOffset: this.options.pointzIndexOffset,
+            icon: this.options.clusterIconFunc(feature, latlng)
+          })
+        }
+        return L.marker(latlng, {
+          zIndexOffset: this.options.pointzIndexOffset,
+          icon: this.options.pointIconFunc(feature, latlng)
+        })
+      },
+      // we draw line from cluster center to point set style for that
+      style: this.options.legsStyle
+    }).addTo(this._map)
+
+    parentLayer._openedClusterLayer.on('click', ({layer}) => {
+      // detect is a point
+      if (layer instanceof L.Marker) {
+        if (layer.feature.properties.subCluster) {
+          this._toggleSubCluster(layer)
+        } else {
+          this._onPointClick(parentLayer, layer)
+        }
+      }
+      // else it could be path to points
+    })
+  },
+  _recursiveRemoveAllOpenedClusterLayer (l) {
+    if (l._openedClusterLayer)  {
+      const layers = l._openedClusterLayer.getLayers()
+      layers.forEach(subL => {
+        this._recursiveRemoveAllOpenedClusterLayer(subL)
+      })
+
+      this._map.removeLayer(l._openedClusterLayer)
+      l._openedClusterLayer = null
+    }
+  },
+  _toggleSubCluster (layer) {
+    if (layer._openedClusterLayer) {
+      this._closeSubCluster(layer)
+    } else {
+      this._openSubCluster(layer, layer.feature.properties.features)
     }
   },
   _openCluster ({clusterId, features}) {
@@ -392,51 +506,139 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       return
     }
 
-    // for prevent double set markers
+    const parentCenter = parentLayer.getLatLng()
+
+    const segmentalFeatures = this._segmentFeatures(features, parentCenter)
+
+    const legs = this._getLegsForMarkersInCluster(parentCenter, segmentalFeatures)
+
     if (parentLayer._openedClusterLayer) {
-      return
+      this._updateMarkersInCluster(parentLayer, segmentalFeatures, legs)
+    } else {
+      this._createMarkersInCluster(parentLayer, segmentalFeatures, legs)
     }
-
-    parentLayer._openedClusterLayer = L.geoJson(features, {
-      pointToLayer: (feature, latlng) => {
-        return L.marker(latlng, {
-          zIndexOffset: this.options.pointzIndexOffset,
-          icon: this.options.pointIconFunc(feature, latlng)
-        })
-      },
-      // in feature we draw path to point
-      // set style for that paths
-      style: {
-        weight: 1,
-        color: '#707070'
-      }
-    }).addTo(this._map)
-
-    parentLayer._openedClusterLayer.on('click', ({layer}) => {
-      // detect is a point
-      if (layer instanceof L.Marker) {
-        this._onPointClick(parentLayer, layer)
-      }
-      // else it could be path to points
-    })
-
-    parentLayer._openedClusterLayer.on('layerremove', ({layer}) => {
-      this.unKeepPoint(layer.feature.properties.id)
-    })
-    parentLayer._openedClusterLayer.on('popupopen', ({layer}) => {
-      this.keepPoint(layer.feature.properties.id)
-    })
-    parentLayer._openedClusterLayer.on('popupclose', ({layer}) => {
-      this.unKeepPoint(layer.feature.properties.id)
-    })
 
     if (parentLayer._icon) {
       parentLayer._icon.classList.add('opened')
     }
   },
+  _closeSubCluster (parentLayer) {
+    if (!parentLayer._openedClusterLayer) {
+      return
+    }
+
+    this._map.removeLayer(parentLayer._openedClusterLayer)
+    parentLayer._openedClusterLayer = null
+
+    if (parentLayer._icon) {
+      parentLayer._icon.classList.remove('opened')
+    }
+  },
+  _openSubCluster (parentLayer, features) {
+    const parentCenter = parentLayer.getLatLng()
+
+    const segmentalFeatures = this._segmentFeatures(features, parentCenter)
+
+    const legs = this._getLegsForMarkersInCluster(parentCenter, segmentalFeatures)
+
+    if (parentLayer._openedClusterLayer) {
+      this._updateMarkersInCluster(parentLayer, segmentalFeatures, legs)
+    } else {
+      this._createMarkersInCluster(parentLayer, segmentalFeatures, legs)
+    }
+  },
+  _getDistanceFromMapCenter () {
+    const center = this._map.getCenter()
+    const bounds =  this._map.getBounds()
+
+    const centerEast = L.latLng(center.lat, bounds.getEast())
+    const distCenterToEast = center.distanceTo(centerEast)
+
+    const centerNorth = L.latLng(bounds.getNorth(), center.lng)
+    const distCenterToNorth = center.distanceTo(centerNorth)
+
+    const distMin = distCenterToEast > distCenterToNorth ? distCenterToNorth : distCenterToEast
+
+    console.log({distCenterToEast, distCenterToNorth, distMin})
+
+    return {distCenterToEast, distCenterToNorth, distMin}
+  },
+  _segmentFeatures (features, parentCenter) {
+    const len = features.length
+    const maxMarkersInClusterOnOnePoint = this.options.maxMarkersInClusterOnOnePoint
+    const subClusterCount = Math.ceil(len / maxMarkersInClusterOnOnePoint)
+
+    if (len <= maxMarkersInClusterOnOnePoint) {
+      return this._createSpiral(features, parentCenter)
+    }
+
+    // build points for subcluster
+    const subClusters = []
+    for (let i = 0; i < subClusterCount; i++) {
+      const featuresInSubCluster = features.slice(i * maxMarkersInClusterOnOnePoint, (i + 1) * maxMarkersInClusterOnOnePoint)
+      subClusters.push({
+        type: 'Feature',
+        properties: {
+          id: `sub_${i}`,
+          subCluster: true,
+          point_count: featuresInSubCluster.length,
+          features: featuresInSubCluster
+        },
+        geometry: {
+          type:'Point',
+          coordinates: []
+        }
+      })
+    }
+
+    return this._createSpiral(subClusters, parentCenter, true)
+  },
+  _createSpiral (features, parentCenter, isSubCluster = false) {
+    const spiralLengthFactor = 5
+    const spiderfyDistanceMultiplier = 0.8 * (isSubCluster ? this.options.showedSubClusterMultiplier : 1)
+    const spiralFootSeparation = 28
+    const spiralLengthStart = 11
+
+    const centerPt = this._map.latLngToLayerPoint(parentCenter)
+
+    const pi2 = Math.PI * 2
+    const count = features.length
+    const separation = spiderfyDistanceMultiplier * spiralFootSeparation
+    const lengthFactor = spiderfyDistanceMultiplier * spiralLengthFactor * pi2
+    let legLength = spiderfyDistanceMultiplier * spiralLengthStart
+    let angle = 0
+    let i
+    let p
+    let coords
+
+    const newFeatures = []
+
+    // Higher index, closer position to cluster center.
+    for (i = count; i >= 0; i--) {
+      // Skip the first position, so that we are already farther from center and we avoid
+      // being under the default cluster icon (especially important for Circle Markers).
+      if (i < count) {
+        p = new L.Point(centerPt.x + legLength * Math.cos(angle), centerPt.y + legLength * Math.sin(angle))._round()
+        coords = this._map.layerPointToLatLng(p)
+        features[i].geometry.coordinates = [
+          coords.lng,
+          coords.lat,
+        ]
+        newFeatures.push(features[i])
+      }
+      angle += separation / legLength + i * 0.0005
+      legLength += lengthFactor / angle
+    }
+    return newFeatures
+  },
   _animatedAdd (l) {
     if (l._icon && l._icon.classList) {
       l._icon.classList.add('animate-add')
+    }
+  },
+  _animatedMove (l) {
+    if (l._icon && l._icon.classList) {
+      l._icon.classList.add('animate-move')
     }
   }
 })

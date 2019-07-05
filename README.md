@@ -1,5 +1,12 @@
 # leaflet-superclaster
 
+Leaflet binding for [supercluster](https://github.com/mapbox/supercluster) 
+
+| Moved           | Static        |
+| -------------   |:-------------:|
+| ![](examples/move.gif) | ![](examples/static.gif)| 
+
+
 ```js
 import * as L from 'leaflet'
 import {SuperclusterGroup} from 'leaflet-superclaster'
@@ -55,4 +62,13 @@ unKeepPoint(id) -
 | layer.updated   | layer, target              | fired on layer position(lat, lng) was updated |
 | draw            | layer, target                      | fired after markers draw, return layers with markers |
 
+## Development
+Run webpack in dev mode and server with fixtures data
+```
+npm run watch
+```
 
+## Tests
+```
+npm run test:e2e
+```

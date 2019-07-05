@@ -2,6 +2,8 @@ import Supercluster from 'supercluster'
 
 let cluster = null
 let lastLoadedFeatures = null
+let childPointsIdsMap = {}
+let clusterHashMap = {}
 
 self.onmessage = ({data}) => {
   console.log('self.onmessage', data.action)
@@ -90,16 +92,18 @@ function clusteringData({keptPointIds = [], bbox, zoom}, {bboxIncreasePer, appen
     features[i].properties.composite_id = features[i].properties.cluster_id
 
     if (features[i].properties.cluster && grabChild === true) {
-      const childIds = getChildPointsIds(features[i].properties.cluster_id)
+      childPointsIdsMap[features[i].properties.cluster_id] = childPointsIdsMap[features[i].properties.cluster_id] || getChildPointsIds(features[i].properties.cluster_id)
+      const childIds = childPointsIdsMap[features[i].properties.cluster_id]
 
       if (appendChildIdsToCluster === true) {
         features[i].properties.childIds = childIds
       }
 
       if (optimizeRedrawClusters === true) {
-        features[i].properties.composite_id = getHashOfString(
+        clusterHashMap[features[i].properties.composite_id] = features[i].properties.composite_id || getHashOfString(
           childIds.sort().join(';')
         ).toString()
+        features[i].properties.composite_id = clusterHashMap[features[i].properties.composite_id]
       }
 
       if (hasKeptPoints === true) {
@@ -141,23 +145,37 @@ function clusteringData({keptPointIds = [], bbox, zoom}, {bboxIncreasePer, appen
 }
 
 function getChildPointsIds(clusterId) {
-  const childs = cluster.getChildren(clusterId)
-  const ids = []
-  const cLen = childs.length
-  for (let i = 0; i < cLen; i++) {
-    if (childs[i].properties.cluster) {
-      ids.push(...getChildPointsIds(childs[i].properties.cluster_id))
-    } else {
-      ids.push(childs[i].properties.id)
-    }
+  if (childPointsIdsMap[clusterId]) {
+    return childPointsIdsMap[clusterId]
   }
-  return ids
+
+  const ids = []
+
+  const stack = [clusterId]
+  while (stack.length) {
+    const id = stack.pop()
+    const childs = cluster.getChildren(id)
+
+    childs.forEach(children => {
+      if (children.properties.cluster) {
+        stack.push(children.properties.cluster_id)
+      } else {
+        ids.push(children.properties.id)
+      }
+    })
+  }
+
+  childPointsIdsMap[clusterId] = ids
+
+  return childPointsIdsMap[clusterId]
 }
 
 function loadFeatures({features = []}, {supercluster}) {
   cluster = new Supercluster(supercluster)
   cluster.load(features)
   lastLoadedFeatures = features
+  childPointsIdsMap = {}
+  clusterHashMap = {}
   sendMessage('load')
 }
 

@@ -29,10 +29,10 @@
     color: #fff;
     font-weight: 700;
     border: 2px solid #fff;
+  }
 
-    &.opened {
-      opacity: 0.3;
-    }
+  &.opened {
+    opacity: 0.3;
   }
 
   &.animate-add {
@@ -58,22 +58,17 @@
     }
   }
 
-  &.animate-remove{
-    .cluster-icon, .point-icon{
-      display: none;
-      // animation: supercluster-removed 300ms;
-    }
+  &.animate-move {
+    transition: transform 300ms linear;
   }
 }
 
-@keyframes supercluster-removed {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(0);
-    opacity: 0;
+// disable animate-move on zoom
+.leaflet-zoom-anim{
+  .supercluster{
+    &.animate-move {
+      transition: none;
+    }
   }
 }
 
@@ -101,4 +96,3 @@
     opacity: 0;
   }
 }
-
