@@ -23,6 +23,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     pointzIndexOffset: 8000,
     maxMarkersInClusterOnOnePoint: 250,
     animated: false,
+    spiderfyDistanceMultiplier: 0.8,
     legsStyle: {
       weight: 1,
       color: '#707070'
@@ -60,17 +61,15 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     this._geoJsonLayer.on('click', this._geoJsonClick, this)
 
-    if (this.options.moveToLastKept) {
-      this._geoJsonLayer.on('layerremove', ({layer}) => {
-        this._checkAndUnKeepPoint(layer)
-      })
-      this._geoJsonLayer.on('popupclose', ({layer}) => {
-        this._checkAndUnKeepPoint(layer)
-      })
-      this._geoJsonLayer.on('popupopen', ({layer}) => {
-        this._checkAndKeepPoint(layer)
-      })
-    }
+    this._geoJsonLayer.on('layerremove', ({layer}) => {
+      this._checkAndUnKeepPoint(layer)
+    })
+    this._geoJsonLayer.on('popupclose', ({layer}) => {
+      this._checkAndUnKeepPoint(layer)
+    })
+    this._geoJsonLayer.on('popupopen', ({layer}) => {
+      this._checkAndKeepPoint(layer)
+    })
 
     if (this.options.animated === true) {
       this._geoJsonLayer.on('layeradd', ({layer}) => {
@@ -595,7 +594,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   },
   _createSpiral (features, parentCenter, isSubCluster = false) {
     const spiralLengthFactor = 5
-    const spiderfyDistanceMultiplier = 0.8 * (isSubCluster ? this.options.showedSubClusterMultiplier : 1)
+    const spiderfyDistanceMultiplier = this.options.spiderfyDistanceMultiplier * (isSubCluster ? this.options.showedSubClusterMultiplier : 1)
     const spiralFootSeparation = 28
     const spiralLengthStart = 11
 

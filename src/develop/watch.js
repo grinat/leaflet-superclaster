@@ -37,7 +37,7 @@ class Map {
           autoClose: false,
           closeOnClick: false,
           autoPan: false
-        }).setContent(JSON.stringify(layer.feature.properties))
+        }).setContent(JSON.stringify(layer.feature))
         layer.bindPopup(popup).openPopup()
       }
     })
@@ -45,7 +45,7 @@ class Map {
     this.superclusterGroup.on('layer.updated', ({layer}) => {
       const popup = layer.getPopup()
       if (popup && popup.isOpen()) {
-        popup.setContent(JSON.stringify(layer.feature.properties))
+        popup.setContent(JSON.stringify(layer.feature))
       }
     })
   }
