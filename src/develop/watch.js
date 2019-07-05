@@ -29,7 +29,12 @@ class Map {
   }
 
   initSupercluster () {
-    this.superclusterGroup = new SuperclusterGroup().addTo(this.map)
+    this.superclusterGroup = new SuperclusterGroup({
+      log: true,
+      supercluster: {
+        log: true
+      }
+    }).addTo(this.map)
     this.superclusterGroup.on('point.click', ({layer}) => {
       let popup = layer.getPopup()
       if (!popup) {
@@ -87,8 +92,6 @@ class Map {
       })
   }
 }
-
-console.log(process.env)
 
 const m = new Map(document.getElementById('map'))
 

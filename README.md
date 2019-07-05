@@ -9,9 +9,9 @@ Leaflet binding for [supercluster](https://github.com/mapbox/supercluster)
 
 ```js
 import * as L from 'leaflet'
-import {SuperclusterGroup} from 'leaflet-superclaster'
+import 'leaflet-superclaster'
 
-// import from 'leaflet-superclaster/dist/supercluster.css'
+// import 'leaflet-superclaster/dist/supercluster.css'
 
 this.superclusterGroup = new SuperclusterGroup().addTo(this.map)
 this.superclusterGroup.on('point.click', function({parentLayer, layer, target}) {

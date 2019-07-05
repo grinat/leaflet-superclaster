@@ -6,7 +6,6 @@ let childPointsIdsMap = {}
 let clusterHashMap = {}
 
 self.onmessage = ({data}) => {
-  console.log('self.onmessage', data.action)
   switch (data.action) {
     case 'loadFeatures':
       loadFeatures(data.data, data.options)
@@ -47,7 +46,9 @@ function expansionZoom({clusterId, latlng}) {
  * @returns {number}
  */
 function getHashOfString(str) {
-  let hash = 0, i, chr
+  let hash = 0
+  let i
+  let chr
   if (str.length === 0) return hash
   for (i = 0; i < str.length; i++) {
     chr   = str.charCodeAt(i)
@@ -62,7 +63,7 @@ function sendMessage (action, data = {}) {
   postMessage(data)
 }
 
-function clusteringData({keptPointIds = [], bbox, zoom}, {bboxIncreasePer, appendChildIdsToCluster, optimizeRedrawClusters}) {
+function clusteringData({keptPointIds = [], bbox, zoom}, {log, bboxIncreasePer, appendChildIdsToCluster, optimizeRedrawClusters}) {
   if (!cluster) {
     return
   }
@@ -135,7 +136,7 @@ function clusteringData({keptPointIds = [], bbox, zoom}, {bboxIncreasePer, appen
     }
   })
 
-  console.log(keptPointIds)
+  log && console.log(keptPointIds)
 
   sendMessage('dataClustered', {
     features,

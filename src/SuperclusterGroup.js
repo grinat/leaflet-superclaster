@@ -24,6 +24,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     maxMarkersInClusterOnOnePoint: 250,
     animated: false,
     spiderfyDistanceMultiplier: 0.8,
+    log: false,
     legsStyle: {
       weight: 1,
       color: '#707070'
@@ -33,7 +34,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       extent: 180,
       minZoom: null,
       maxZoom: null,
-      log: true
+      log: false
     }
   },
   _geoJsonLayer: null,
@@ -166,12 +167,12 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     if (this._keptPointIds.indexOf(id) > -1) {
       return
     }
-    console.log('keepPoint', id)
+    this.options.log && console.log('keepPoint', id)
     this._keptPointIds.push(id)
   },
   unKeepPoint (id) {
     if (this._keptPointIds.length > 0) {
-      console.log('unKeepPoint', id)
+      this.options.log && console.log('unKeepPoint', id)
       this._keptPointIds = this._keptPointIds.filter(v => v !== id)
       // if we click on point is kept
       // if we minimize zoom, kep point remove from cluster
@@ -180,7 +181,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     }
   },
   moveToLastKept () {
-    console.log('move to last')
+    this.options.log && console.log('move to last')
     const layers = this._geoJsonLayer.getLayers()
 
     const lastId = this._keptPointIds[this._keptPointIds.length - 1]
@@ -202,7 +203,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     }
   },
   _onWorkerMessage ({data}) {
-    console.log('_onWorkerMessage', data.action, data)
+    this.options.log && console.log('_onWorkerMessage', data.action, data)
     switch (data.action) {
       case 'dataClustered':
         this._drawItems(data.features, data.zoom)
@@ -340,8 +341,16 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   /**
    * @override
    */
-  initialize (options) {
-    L.Util.setOptions(this, options)
+  initialize (options = {}) {
+    for (const opt in options) {
+      if (this.options.hasOwnProperty(opt)) {
+        if (typeof this.options[opt] === 'object') {
+          this.options[opt] = Object.assign(this.options[opt], options[opt])
+        } else {
+          this.options[opt] = options[opt]
+        }
+      }
+    }
 
     this.options.clusterIconFunc = this.options.clusterIconFunc || this._clusterIconFunc
     this.options.pointIconFunc = this.options.pointIconFunc || this._pointIconFunc
@@ -558,7 +567,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     const distMin = distCenterToEast > distCenterToNorth ? distCenterToNorth : distCenterToEast
 
-    console.log({distCenterToEast, distCenterToNorth, distMin})
+    this.options.log && console.log({distCenterToEast, distCenterToNorth, distMin})
 
     return {distCenterToEast, distCenterToNorth, distMin}
   },

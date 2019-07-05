@@ -1,7 +1,7 @@
 {
   "name": "leaflet-superclaster",
-  "version": "0.0.1",
-  "description": "",
+  "version": "0.0.2",
+  "description": "Leaflet binding for supercluster",
   "main": "dist/leaflet-superclaster.js",
   "scripts": {
     "build": "rimraf dist/ && cross-env NODE_ENV=production webpack",

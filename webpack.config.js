@@ -100,7 +100,7 @@ module.exports = {
         terserOptions: {
           compress: {
             evaluate: false,
-            drop_console: true
+            // drop_console: true
           }
         }
       })
