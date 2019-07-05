@@ -344,7 +344,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   initialize (options = {}) {
     for (const opt in options) {
       if (this.options.hasOwnProperty(opt)) {
-        if (typeof this.options[opt] === 'object') {
+        if (this.options[opt] instanceof Object) {
           this.options[opt] = Object.assign(this.options[opt], options[opt])
         } else {
           this.options[opt] = options[opt]
