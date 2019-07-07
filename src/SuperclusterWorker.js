@@ -6,6 +6,12 @@ let childPointsIdsMap = {}
 let clusterHashMap = {}
 
 self.onmessage = ({data}) => {
+  if (data.options.log) {
+    console.group(data.action)
+    console.time(data.action)
+    console.log('workerdata', data)
+  }
+
   switch (data.action) {
     case 'loadFeatures':
       loadFeatures(data.data, data.options)
@@ -19,6 +25,11 @@ self.onmessage = ({data}) => {
     case 'pointsInCluster':
       pointsInCluster(data.data)
       break
+  }
+
+  if (data.options.log) {
+    console.timeEnd(data.action)
+    console.groupEnd(data.action)
   }
 }
 
@@ -63,7 +74,7 @@ function sendMessage (action, data = {}) {
   postMessage(data)
 }
 
-function clusteringData({keptPointIds = [], bbox, zoom}, {log, bboxIncreasePer, appendChildIdsToCluster, optimizeRedrawClusters}) {
+function clusteringData({keptPointIds = [], bbox, zoom}, {log, bboxIncreasePer, appendChildIdsToCluster, optimizeRedraw}) {
   if (!cluster) {
     return
   }
@@ -85,7 +96,7 @@ function clusteringData({keptPointIds = [], bbox, zoom}, {log, bboxIncreasePer, 
 
   const features = cluster.getClusters(increasedBbox, zoom)
   const hasKeptPoints = keptPointIds.length > 0
-  const grabChild = hasKeptPoints || appendChildIdsToCluster || optimizeRedrawClusters
+  const grabChild = appendChildIdsToCluster || optimizeRedraw
 
   const fLen = features.length
   const ids = []
@@ -100,7 +111,7 @@ function clusteringData({keptPointIds = [], bbox, zoom}, {log, bboxIncreasePer, 
         features[i].properties.childIds = childIds
       }
 
-      if (optimizeRedrawClusters === true) {
+      if (optimizeRedraw === true) {
         clusterHashMap[features[i].properties.composite_id] = features[i].properties.composite_id || getHashOfString(
           childIds.sort().join(';')
         ).toString()
@@ -122,23 +133,25 @@ function clusteringData({keptPointIds = [], bbox, zoom}, {log, bboxIncreasePer, 
     }
   }
 
-  // TODO to for
-  keptPointIds.forEach(id => {
-    if (ids.indexOf(id) === -1 && lastLoadedFeatures) {
-      // find point and return as feature
-      const len = lastLoadedFeatures.length
-      for (let i = 0; i < len; i++) {
-        if (lastLoadedFeatures[i].properties.id === id) {
-          features.push(lastLoadedFeatures[i])
-          break
+  if (grabChild) {
+    // TODO to for
+    keptPointIds.forEach(id => {
+      if (ids.indexOf(id) === -1 && lastLoadedFeatures) {
+        // find point and return as feature
+        const len = lastLoadedFeatures.length
+        for (let i = 0; i < len; i++) {
+          if (lastLoadedFeatures[i].properties.id === id) {
+            features.push(lastLoadedFeatures[i])
+            break
+          }
         }
       }
-    }
-  })
+    })
+  }
 
-  log && console.log(keptPointIds)
+  log && console.log('single markers ids', ids, 'keptPointIds', keptPointIds)
 
-  sendMessage('dataClustered', {
+  sendMessage('clusteringData', {
     features,
     zoom,
     bbox

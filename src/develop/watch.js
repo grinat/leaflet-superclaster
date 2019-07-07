@@ -30,6 +30,8 @@ class Map {
 
   initSupercluster () {
     this.superclusterGroup = new SuperclusterGroup({
+      optimizeRedraw: true,
+      maxMarkersInClusterOnOnePoint: 50,
       log: true,
       supercluster: {
         log: true
@@ -52,6 +54,10 @@ class Map {
       if (popup && popup.isOpen()) {
         popup.setContent(JSON.stringify(layer.feature))
       }
+    })
+
+    this.superclusterGroup.on('error', (e) => {
+      console.log('error fired', e)
     })
   }
 
@@ -99,6 +105,7 @@ document.getElementById('loadStatic').addEventListener('click', () => {
   m.destroySupercluster()
   m.initSupercluster()
   m.loadStatic()
+  clearInterval(m.moveInterval)
 })
 
 document.getElementById('startMove').addEventListener('click', () => {
@@ -114,3 +121,11 @@ document.getElementById('pauseMove').addEventListener('click', () => {
 document.getElementById('resumeMove').addEventListener('click', () => {
   m.loadMovedWithDelay()
 })
+
+fetch('https://cors-anywhere.herokuapp.com/https://grinat.github.io/leaflet-superclaster/src/develop/fixtures/markers.geojson.json')
+  .then(r => r.json())
+  .then(features => {
+    console.time('loadStatic')
+    this.superclusterGroup.loadGeoJsonData(features)
+    console.timeEnd('loadStatic')
+  })

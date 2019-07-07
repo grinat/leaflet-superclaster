@@ -9,9 +9,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   options: {
     clusterIconFunc: null,
     pointIconFunc: null,
-    optimizeRedrawClusters: true,
-    optimizeRedrawPoints: true,
-    optimizeRedrawPointsInOpenedCluster: true,
+    optimizeRedraw: true,
     appendChildIdsToCluster: false,
     showClustersOnMaxZoom: true,
     showedSubClusterMultiplier: 2,
@@ -74,7 +72,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     if (this.options.animated === true) {
       this._geoJsonLayer.on('layeradd', ({layer}) => {
-        this._animatedAdd(layer)
+        this._addClassToIcon(layer, 'animate-add')
       })
     }
   },
@@ -137,9 +135,9 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       data,
       options: {
         bboxIncreasePer: this.options.bboxIncreasePer,
-        optimizeRedrawClusters: this.options.optimizeRedrawClusters,
-        optimizeRedrawPoints: this.options.optimizeRedrawPoints,
-        supercluster: this.options.supercluster
+        optimizeRedraw: this.options.optimizeRedraw,
+        supercluster: this.options.supercluster,
+        log: this.options.log
       }
     }
     this._worker.postMessage(message)
@@ -169,6 +167,10 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     }
     this.options.log && console.log('keepPoint', id)
     this._keptPointIds.push(id)
+
+    if (!this.options.optimizeRedraw) {
+      console.warn('keepPoint worked only if optimizeRedraw=true')
+    }
   },
   unKeepPoint (id) {
     if (this._keptPointIds.length > 0) {
@@ -203,9 +205,14 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     }
   },
   _onWorkerMessage ({data}) {
-    this.options.log && console.log('_onWorkerMessage', data.action, data)
+    if (this.options.log) {
+      console.group(data.action)
+      console.time(data.action)
+      console.log('workerdata', data)
+    }
+
     switch (data.action) {
-      case 'dataClustered':
+      case 'clusteringData':
         this._drawItems(data.features, data.zoom)
         break
       case 'load':
@@ -217,6 +224,11 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       case 'pointsInCluster':
         this._openCluster(data)
         break
+    }
+
+    if (this.options.log) {
+      console.timeEnd(data.action)
+      console.groupEnd(data.action)
     }
   },
   _expansionZoom ({latlng, zoom}) {
@@ -232,10 +244,11 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     const layers = this._geoJsonLayer.getLayers()
     const len = layers.length
 
-    const optimizeRedraw = this.options.optimizeRedrawPoints || this.options.optimizeRedrawClusters
-
-    if (optimizeRedraw === false || len === 0) {
-      this._geoJsonLayer.clearLayers()
+    if (this.options.optimizeRedraw === false || len === 0) {
+      // for remove all clusters and subclusters
+      layers.forEach(l => {
+        this._deleteLayerFromGeoJsonLayer(l)
+      })
       this._geoJsonLayer.addData(features)
     } else {
       const addMarkerFeaturesMap = {}
@@ -257,25 +270,17 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
         const l = layers[i]
 
         if (l.feature.properties.cluster) {
-          if (this.options.optimizeRedrawClusters === true) {
-            this._removeOrUpdateLayer(
-              l,
-              addClustersFeaturesMap,
-              'composite_id'
-            )
-          } else {
-            this._deleteLayerFromGeoJsonLayer(l)
-          }
+          this._removeOrUpdateLayer(
+            l,
+            addClustersFeaturesMap,
+            'composite_id'
+          )
         } else {
-          if (this.options.optimizeRedrawPoints === true) {
-            this._removeOrUpdateLayer(
-              l,
-              addMarkerFeaturesMap,
-              'id'
-            )
-          } else {
-            this._deleteLayerFromGeoJsonLayer(l)
-          }
+          this._removeOrUpdateLayer(
+            l,
+            addMarkerFeaturesMap,
+            'id'
+          )
         }
       }
 
@@ -314,7 +319,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
       this.fire('layer.updated', {layer: l})
 
-      this.options.animated && this._animatedMove(l)
+      this.options.animated && this._addClassToIcon(l, 'animate-move')
 
       this._updateMarkersInOpenedClusterLayer(l)
     } else {
@@ -406,28 +411,10 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _closeCluster (layer) {
     this._recursiveRemoveAllOpenedClusterLayer(layer)
 
-    if (layer._icon) {
-      layer._icon.classList.remove('opened')
-    }
-  },
-  _getLegsForMarkersInCluster (parentCenter, features) {
-    const parentCenterGeometry = [parentCenter.lng, parentCenter.lat]
-
-    const legs = []
-    const len = features.length
-    for (let i = 0; i < len; i++) {
-      legs.push({
-        type: 'LineString',
-        coordinates: [
-          features[i].geometry.coordinates, parentCenterGeometry
-        ]
-      })
-    }
-
-    return legs
+    this._removeClassFromIcon(layer, 'opened')
   },
   _updateMarkersInCluster (parentLayer, features, legs) {
-    // create map from exist layers
+    // create map from exist features
     const featureIdMap = {}
 
     const len = features.length
@@ -448,13 +435,35 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
         )
         l.feature = featureIdMap[id]
         this.fire('layer.updated', {layer: l})
+
+        // try to update data in subcluster
+        if (l._openedClusterLayer && l.feature.properties.features) {
+          // create spiral or subcluster in subcluster
+          const {segmentalFeatures, legs} = this._segmentFeaturesForLayer(l, l.feature.properties.features)
+
+          this._updateMarkersInCluster(l, segmentalFeatures, legs)
+        } else {
+          // if in new markers not segments - remove
+          this._recursiveRemoveAllOpenedClusterLayer(l)
+
+          // mark as closed
+          this._removeClassFromIcon(l, 'opened')
+        }
+
+        // if marker updated - remove from map
+        delete featureIdMap[id]
       } else {
+        this._recursiveRemoveAllOpenedClusterLayer(l)
         parentLayer._openedClusterLayer.removeLayer(l)
       }
     }
 
-    // insert legs to markers
-    parentLayer._openedClusterLayer.addData(legs)
+    // insert markers which not exist in subLayers
+    const featuresForCreate = Object.values(featureIdMap)
+
+    parentLayer._openedClusterLayer.addData([
+      ...featuresForCreate, ...legs
+    ])
   },
   _createMarkersInCluster (parentLayer, features, legs) {
     parentLayer._openedClusterLayer = L.geoJson([
@@ -463,7 +472,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       pointToLayer: (feature, latlng) => {
         if (feature.properties.subCluster) {
           return L.marker(latlng, {
-            zIndexOffset: this.options.pointzIndexOffset,
+            zIndexOffset: this.options.clusterzIndexOffset,
             icon: this.options.clusterIconFunc(feature, latlng)
           })
         }
@@ -493,6 +502,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       const layers = l._openedClusterLayer.getLayers()
       layers.forEach(subL => {
         this._recursiveRemoveAllOpenedClusterLayer(subL)
+        l._openedClusterLayer.removeLayer(subL)
       })
 
       this._map.removeLayer(l._openedClusterLayer)
@@ -514,11 +524,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       return
     }
 
-    const parentCenter = parentLayer.getLatLng()
-
-    const segmentalFeatures = this._segmentFeatures(features, parentCenter)
-
-    const legs = this._getLegsForMarkersInCluster(parentCenter, segmentalFeatures)
+    const {segmentalFeatures, legs} = this._segmentFeaturesForLayer(parentLayer, features)
 
     if (parentLayer._openedClusterLayer) {
       this._updateMarkersInCluster(parentLayer, segmentalFeatures, legs)
@@ -526,9 +532,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       this._createMarkersInCluster(parentLayer, segmentalFeatures, legs)
     }
 
-    if (parentLayer._icon) {
-      parentLayer._icon.classList.add('opened')
-    }
+    this._addClassToIcon(parentLayer, 'opened')
   },
   _closeSubCluster (parentLayer) {
     if (!parentLayer._openedClusterLayer) {
@@ -538,22 +542,18 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     this._map.removeLayer(parentLayer._openedClusterLayer)
     parentLayer._openedClusterLayer = null
 
-    if (parentLayer._icon) {
-      parentLayer._icon.classList.remove('opened')
-    }
+    this._removeClassFromIcon(parentLayer, 'opened')
   },
   _openSubCluster (parentLayer, features) {
-    const parentCenter = parentLayer.getLatLng()
-
-    const segmentalFeatures = this._segmentFeatures(features, parentCenter)
-
-    const legs = this._getLegsForMarkersInCluster(parentCenter, segmentalFeatures)
+    const {segmentalFeatures, legs} = this._segmentFeaturesForLayer(parentLayer, features)
 
     if (parentLayer._openedClusterLayer) {
       this._updateMarkersInCluster(parentLayer, segmentalFeatures, legs)
     } else {
       this._createMarkersInCluster(parentLayer, segmentalFeatures, legs)
     }
+
+    this._addClassToIcon(parentLayer, 'opened')
   },
   _getDistanceFromMapCenter () {
     const center = this._map.getCenter()
@@ -571,7 +571,28 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     return {distCenterToEast, distCenterToNorth, distMin}
   },
+  _segmentFeaturesForLayer (parentLayer, features) {
+    const parentCenter = parentLayer.getLatLng()
+
+    const segmentalFeatures = this._segmentFeatures(features, parentCenter)
+
+    const legs = this._getLegsForMarkersInCluster(parentCenter, segmentalFeatures)
+
+    return {segmentalFeatures, legs}
+  },
   _segmentFeatures (features, parentCenter) {
+    // we need to align data by id sor saving order
+    // and prevent popup rotate
+    features.sort((a, b) => {
+      if (a.properties.id > b.properties.id) {
+        return 1
+      }
+      if (a.properties.id < b.properties.id) {
+        return -1
+      }
+      return 0
+    })
+
     const len = features.length
     const maxMarkersInClusterOnOnePoint = this.options.maxMarkersInClusterOnOnePoint
     const subClusterCount = Math.ceil(len / maxMarkersInClusterOnOnePoint)
@@ -639,14 +660,30 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     }
     return newFeatures
   },
-  _animatedAdd (l) {
+  _getLegsForMarkersInCluster (parentCenter, features) {
+    const parentCenterGeometry = [parentCenter.lng, parentCenter.lat]
+
+    const legs = []
+    const len = features.length
+    for (let i = 0; i < len; i++) {
+      legs.push({
+        type: 'LineString',
+        coordinates: [
+          features[i].geometry.coordinates, parentCenterGeometry
+        ]
+      })
+    }
+
+    return legs
+  },
+  _addClassToIcon (l, name) {
     if (l._icon && l._icon.classList) {
-      l._icon.classList.add('animate-add')
+      l._icon.classList.add(name)
     }
   },
-  _animatedMove (l) {
+  _removeClassFromIcon (l, name) {
     if (l._icon && l._icon.classList) {
-      l._icon.classList.add('animate-move')
+      l._icon.classList.remove(name)
     }
   }
 })

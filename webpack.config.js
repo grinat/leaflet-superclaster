@@ -95,6 +95,9 @@ module.exports = {
   ],
   externals,
   optimization: {
+    minimize: false,
+    /*
+    // source-map not working with TerserPlugin
     minimizer: [
       new TerserPlugin({
         terserOptions: {
@@ -105,6 +108,7 @@ module.exports = {
         }
       })
     ]
+    */
   },
   devtool: 'source-map'
 }

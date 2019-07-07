@@ -1,5 +1,9 @@
 .leaflet-popup{
   // transition: transform 300ms linear!important;
+
+  &:hover{
+    z-index: 50000;
+  }
 }
 
 body{
