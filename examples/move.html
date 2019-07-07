@@ -27,12 +27,22 @@ body {
     padding: 20px;
     transform: translate(0, 50%);
 }
+
+#info {
+    position: fixed;
+    bottom: 44px;
+    left: 19px;
+    background: white;
+    z-index: 2000;
+    padding: 20px;
+}
 </style>
 
 <div id="preloader">Data loading</div>
+<div id="info">Update delay = 10 000 ms</div>
 <div id="map"></div>
 
-<script src="static.js"></script>
+<script src="move.js"></script>
 
 </body>
 </html>

@@ -1,28 +1,7 @@
 /* global L */
 
-// features format for superclauster
-// or you can use FeatureCollection
-const features = [
-  {
-    properties: {
-      // !! id in properties are required
-      // used for redraw markers which changes the position
-      id: 1
-    },
-    type: "Feature",
-    geometry: {type: "Point", coordinates: [2, 47]}
-  },
-  {
-    properties: {
-      id: 2
-    },
-    type: "Feature",
-    geometry: {type: "Point", coordinates: [2.5, 47.5]}
-  }
-]
-
 // create map
-const map = L.map(document.getElementById('map')).setView([47, 2], 7)
+const map = L.map(document.getElementById('map')).setView([47.05436182288562, 1.4841811669119223], 11)
 
 // add tiles
 L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
@@ -55,16 +34,48 @@ superclusterGroup.on('point.click', ({layer}) => {
   }
 })
 
+// if popup moved update data
+superclusterGroup.on('layer.updated', ({layer}) => {
+  const popup = layer.getPopup()
+  if (popup && popup.isOpen()) {
+    popup.setContent(JSON.stringify(layer.feature))
+  }
+})
+
+// functions for move data in browser
+function getRandomInt(min, max) {
+  min = Math.ceil(min)
+  max = Math.floor(max)
+  return Math.floor(Math.random() * (max - min + 1)) + min
+}
+
+let movedMarkers = {}
+function moveMarkers() {
+  movedMarkers.features.forEach((feature, i) => {
+    const [lng, lat] = feature.geometry.coordinates
+
+    const coef = getRandomInt(1, 2) === 2 ? 0.002 : 0.001
+    movedMarkers.features[i].geometry.coordinates = [
+      lng + coef,
+      lat
+    ]
+  })
+
+  superclusterGroup.loadGeoJsonData(movedMarkers)
+
+  setTimeout(() => moveMarkers(), 10000)
+}
+
 // try to load data from github
 fetch('https://cors-anywhere.herokuapp.com/https://grinat.github.io/leaflet-superclaster/src/develop/fixtures/markers.geojson.json')
   .then(r => r.json())
   .then(featureCollection => {
-    // add downloaded to superclusterGroup for show markers
-    superclusterGroup.loadGeoJsonData(featureCollection)
+    movedMarkers = featureCollection
+    moveMarkers()
     preloader.style.display = 'none'
   })
-  .catch(() => {
-    // if download failed set 2 markers
-    superclusterGroup.loadGeoJsonData(features)
+  .catch(e => {
+    alert(e)
     preloader.style.display = 'none'
   })
+

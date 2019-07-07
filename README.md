@@ -2,9 +2,10 @@
 
 Leaflet binding for [supercluster](https://github.com/mapbox/supercluster) 
 
-| Moved           | Static        |
+| move         | static        |
 | -------------   |:-------------:|
 | ![](examples/move.gif) | ![](examples/static.gif)| 
+| [example](https://grinat.github.io/leaflet-superclaster/examples/static.html) | [example](https://grinat.github.io/leaflet-superclaster/examples/move.html)  |
 
 
 ```js
