@@ -59,6 +59,10 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     this._workerMessageManager.receive(data)
 
+    if (!this._map) {
+      return
+    }
+
     switch (data.action) {
       case 'clusteringData':
         if (data.features) {
@@ -383,6 +387,8 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     this.options.clusterIconFunc = this.options.clusterIconFunc || this._clusterIconFunc
     this.options.pointIconFunc = this.options.pointIconFunc || this._pointIconFunc
+
+    this._keptPointIds = []
 
     this._initWorker()
   },
