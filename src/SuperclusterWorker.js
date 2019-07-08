@@ -76,6 +76,9 @@ function sendMessage (action, data = {}) {
 
 function clusteringData({keptPointIds = [], bbox, zoom}, {log, bboxIncreasePer, appendChildIdsToCluster, optimizeRedraw}) {
   if (!cluster) {
+    sendMessage('clusteringData', {
+      features: null
+    })
     return
   }
 
@@ -190,6 +193,6 @@ function loadFeatures({features = []}, {supercluster}) {
   lastLoadedFeatures = features
   childPointsIdsMap = {}
   clusterHashMap = {}
-  sendMessage('load')
+  sendMessage('loadFeatures')
 }
 

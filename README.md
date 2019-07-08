@@ -62,6 +62,8 @@ unKeepPoint(id) -
 | point.click     | parentLayer, layer, target | Fired on click by point |
 | layer.updated   | layer, target              | fired on layer position(lat, lng) was updated |
 | draw            | layer, target                      | fired after markers draw, return layers with markers |
+| end            |                       | all data in worker executed |
+| wait            |                      | data execution in worker |
 
 ## Development
 Run webpack in dev mode and server with fixtures data

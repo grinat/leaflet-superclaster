@@ -724,6 +724,9 @@ function sendMessage (action, data = {}) {
 
 function clusteringData({keptPointIds = [], bbox, zoom}, {log, bboxIncreasePer, appendChildIdsToCluster, optimizeRedraw}) {
   if (!cluster) {
+    sendMessage('clusteringData', {
+      features: null
+    })
     return
   }
 
@@ -838,11 +841,11 @@ function loadFeatures({features = []}, {supercluster}) {
   lastLoadedFeatures = features
   childPointsIdsMap = {}
   clusterHashMap = {}
-  sendMessage('load')
+  sendMessage('loadFeatures')
 }
 
 
 
 /***/ })
 /******/ ]);
-//# sourceMappingURL=4e13ba28892cefcf9d26.worker.js.map
+//# sourceMappingURL=540d95081284d1625a96.worker.js.map

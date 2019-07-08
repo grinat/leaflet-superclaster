@@ -2,6 +2,7 @@ import * as L from 'leaflet'
 // import SuperclusterWorker from 'worker-loader!./SuperclusterWorker'
 // eslint-disable-next-line import/default
 import SuperclusterWorker from './SuperclusterWorker'
+import {WorkerMessageManager} from './WorkerMessageManager'
 
 import './supercluster.scss'
 
@@ -39,23 +40,68 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _worker: null,
   _map: null,
   _keptPointIds: [],
+  _workerMessageManager: null,
   _initWorker () {
+    this._workerMessageManager = new WorkerMessageManager({
+      onEnd: () => this.fire('end'),
+      onWait: () => this.fire('wait')
+    })
     this._worker = new SuperclusterWorker()
     this._worker.onmessage = (d) => this._onWorkerMessage(d)
     this._worker.onerror = e => this.fire('error', e)
   },
+  _onWorkerMessage ({data}) {
+    if (this.options.log) {
+      console.group(data.action)
+      console.time(data.action)
+      console.log('workerdata', data)
+    }
+
+    this._workerMessageManager.receive(data)
+
+    switch (data.action) {
+      case 'clusteringData':
+        if (data.features) {
+          this._drawItems(data.features, data.zoom)
+        }
+        break
+      case 'loadFeatures':
+        this._clusteringData(data)
+        break
+      case 'expansionZoom':
+        this._expansionZoom(data)
+        break
+      case 'pointsInCluster':
+        this._openCluster(data)
+        break
+    }
+
+    this._workerMessageManager.checkQueue()
+
+    if (this.options.log) {
+      console.timeEnd(data.action)
+      console.groupEnd(data.action)
+    }
+  },
+  _sendMessage (action, data = {}) {
+    const message = {
+      action,
+      data,
+      options: {
+        bboxIncreasePer: this.options.bboxIncreasePer,
+        optimizeRedraw: this.options.optimizeRedraw,
+        supercluster: this.options.supercluster,
+        log: this.options.log
+      }
+    }
+    this._workerMessageManager.send(message, () => {
+      this._worker.postMessage(message)
+    })
+    this._workerMessageManager.checkQueue()
+  },
   _createGeoJsonLayer () {
     this._geoJsonLayer = L.geoJson(null, {
-      pointToLayer: (feature, latlng) => {
-        return L.marker(latlng, {
-          zIndexOffset: feature.properties.cluster ?
-            this.options.clusterzIndexOffset :
-            this.options.pointzIndexOffset,
-          icon: feature.properties.cluster ?
-            this.options.clusterIconFunc(feature, latlng) :
-            this.options.pointIconFunc(feature, latlng)
-        })
-      }
+      pointToLayer: this._pointToLayer.bind(this)
     })
 
     this._geoJsonLayer.on('click', this._geoJsonClick, this)
@@ -129,26 +175,16 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       keptPointIds: this._keptPointIds
     })
   },
-  _sendMessage (action, data = {}) {
-    const message = {
-      action,
-      data,
-      options: {
-        bboxIncreasePer: this.options.bboxIncreasePer,
-        optimizeRedraw: this.options.optimizeRedraw,
-        supercluster: this.options.supercluster,
-        log: this.options.log
-      }
-    }
-    this._worker.postMessage(message)
-  },
   loadGeoJsonData (featuresOrFutureCollection) {
+    this._workerMessageManager.clean()
+
     let features = []
     if (Array.isArray(featuresOrFutureCollection)) {
       features = featuresOrFutureCollection
     } else {
       features = featuresOrFutureCollection.features
     }
+
     this._sendMessage('loadFeatures', {features})
   },
   _checkAndKeepPoint (layer) {
@@ -202,33 +238,6 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     if (!lastInView) {
       this._map.setView(bounds.getCenter())
-    }
-  },
-  _onWorkerMessage ({data}) {
-    if (this.options.log) {
-      console.group(data.action)
-      console.time(data.action)
-      console.log('workerdata', data)
-    }
-
-    switch (data.action) {
-      case 'clusteringData':
-        this._drawItems(data.features, data.zoom)
-        break
-      case 'load':
-        this._clusteringData(data)
-        break
-      case 'expansionZoom':
-        this._expansionZoom(data)
-        break
-      case 'pointsInCluster':
-        this._openCluster(data)
-        break
-    }
-
-    if (this.options.log) {
-      console.timeEnd(data.action)
-      console.groupEnd(data.action)
     }
   },
   _expansionZoom ({latlng, zoom}) {
@@ -326,6 +335,21 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       // layer not exist in featureMap
       this._deleteLayerFromGeoJsonLayer(l)
     }
+  },
+  _pointToLayer (feature, latlng) {
+    const isCluster = feature.properties.subCluster || feature.properties.cluster
+
+    if (isCluster) {
+      return L.marker(latlng, {
+        zIndexOffset: this.options.clusterzIndexOffset,
+        icon: this.options.clusterIconFunc(feature, latlng)
+      })
+    }
+
+    return L.marker(latlng, {
+      zIndexOffset: this.options.pointzIndexOffset,
+      icon: this.options.pointIconFunc(feature, latlng)
+    })
   },
   _clusterIconFunc (feature) {
     return new L.DivIcon({
@@ -469,18 +493,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     parentLayer._openedClusterLayer = L.geoJson([
       ...features, ...legs
     ], {
-      pointToLayer: (feature, latlng) => {
-        if (feature.properties.subCluster) {
-          return L.marker(latlng, {
-            zIndexOffset: this.options.clusterzIndexOffset,
-            icon: this.options.clusterIconFunc(feature, latlng)
-          })
-        }
-        return L.marker(latlng, {
-          zIndexOffset: this.options.pointzIndexOffset,
-          icon: this.options.pointIconFunc(feature, latlng)
-        })
-      },
+      pointToLayer: this._pointToLayer.bind(this),
       // we draw line from cluster center to point set style for that
       style: this.options.legsStyle
     }).addTo(this._map)
@@ -622,6 +635,9 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     return this._createSpiral(subClusters, parentCenter, true)
   },
+  /**
+   * @source https://github.com/Leaflet/Leaflet.markercluster/blob/74c766be3aa962a062010b520ca9c982bd13cfb0/src/MarkerCluster.Spiderfier.js#L74
+   */
   _createSpiral (features, parentCenter, isSubCluster = false) {
     const spiralLengthFactor = 5
     const spiderfyDistanceMultiplier = this.options.spiderfyDistanceMultiplier * (isSubCluster ? this.options.showedSubClusterMultiplier : 1)
