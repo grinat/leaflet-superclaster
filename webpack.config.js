@@ -2,6 +2,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const TerserPlugin = require('terser-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const webpack = require('webpack')
+const path = require('path')
 
 const mode = process.env.NODE_ENV || 'development'
 const prod = mode === 'production'
@@ -36,7 +37,13 @@ module.exports = {
     rules: [
       {
         test: /\.m?js$/,
-        exclude: /(node_modules|bower_components)/,
+        // exclude: /(node_modules|bower_components)/,
+        include: [
+          path.join(__dirname, 'src'),
+          // for support ie 11
+          path.join(__dirname, 'node_modules/supercluster'),
+          path.join(__dirname, 'node_modules/kdbush')
+        ],
         use: {
           loader: 'babel-loader'
         }
@@ -51,13 +58,18 @@ module.exports = {
       },
       {
         test: /.worker\.js$/,
-        use: {
-          loader: 'worker-loader',
-          options: {
-            inline: true,
-            name: 'leaflet-superclaster.worker.js'
+        use: [
+          {
+            loader: 'worker-loader',
+            options: {
+              inline: true,
+              name: 'leaflet-superclaster.worker.js'
+            }
+          },
+          {
+            loader: 'babel-loader'
           }
-        }
+        ]
       },
       {
         test: /\.(png|jpe?g|gif|webp)(\?.*)?$/,

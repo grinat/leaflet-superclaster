@@ -1,3 +1,5 @@
+import '@babel/polyfill'
+
 import Supercluster from 'supercluster'
 
 let cluster = null

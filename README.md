@@ -10,28 +10,28 @@ Leaflet binding for [supercluster](https://github.com/mapbox/supercluster)
 
 ```js
 import * as L from 'leaflet'
-import 'leaflet-superclaster'
 
-// import 'leaflet-superclaster/dist/supercluster.css'
+import {SuperclusterGroup} from 'leaflet-superclaster'
+import 'leaflet-superclaster/dist/supercluster.css'
 
 this.superclusterGroup = new SuperclusterGroup().addTo(this.map)
 this.superclusterGroup.on('point.click', function({parentLayer, layer, target}) {
-            let popup = layer.getPopup()
-            if (!popup) {
-              popup = L.popup({
-                autoClose: false,
-                closeOnClick: false,
-                autoPan: false
-              }).setContent(JSON.stringify(layer.feature.properties))
-              layer.bindPopup(popup).openPopup()
-            }
+  let popup = layer.getPopup()
+  if (!popup) {
+    popup = L.popup({
+      autoClose: false,
+      closeOnClick: false,
+      autoPan: false
+    }).setContent(JSON.stringify(layer.feature.properties))
+    layer.bindPopup(popup).openPopup()
+  }
 })
 
 this.superclusterGroup.on('layer.updated', function ({layer}) {
-            const popup = layer.getPopup()
-            if (popup && popup.isOpen()) {
-              popup.setContent(JSON.stringify(layer.feature.properties))
-            }
+  const popup = layer.getPopup()
+  if (popup && popup.isOpen()) {
+    popup.setContent(JSON.stringify(layer.feature.properties))
+  }
 })
           
 const features = [{
@@ -74,4 +74,19 @@ npm run watch
 ## Tests
 ```
 npm run test:e2e
+```
+
+### Fallback
+For use in ie 11 with webpack. Install copy-webpack-plugin and copy leaflet-superclaster.worker.js to root folder:
+```
+const CopyPlugin = require('copy-webpack-plugin')
+
+...
+plugins: [
+  new CopyPlugin([
+    { from: 'node_modules/leaflet-superclaster/dist/leaflet-superclaster.worker.js', to: 'leaflet-superclaster.worker.js' }
+  ])
+]
+...
+
 ```
