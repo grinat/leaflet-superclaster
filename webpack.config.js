@@ -5,8 +5,14 @@ const webpack = require('webpack')
 
 const mode = process.env.NODE_ENV || 'development'
 const prod = mode === 'production'
-const externals = prod ? {leaflet: 'L'} : {}
-const library = prod ? 'amd' : undefined
+const externals = prod ? {
+  leaflet: {
+    commonjs: 'leaflet',
+    commonjs2: 'leaflet',
+    amd: 'leaflet',
+    root: 'L' // indicates global variable
+  }
+} : {}
 
 module.exports = {
   entry: {
@@ -22,7 +28,8 @@ module.exports = {
     path: __dirname + '/dist',
     filename: 'leaflet-superclaster.js',
     chunkFilename: 'leaflet-superclaster.js',
-    library,
+    library: prod ? 'leaflet-superclaster' : undefined,
+    libraryTarget: prod ? 'umd' : undefined,
     publicPath: '/'
   },
   module: {
@@ -43,11 +50,12 @@ module.exports = {
         ]
       },
       {
-        test: /Worker\.js$/,
+        test: /.worker\.js$/,
         use: {
           loader: 'worker-loader',
           options: {
-            inline: true
+            inline: true,
+            name: 'leaflet-superclaster.worker.js'
           }
         }
       },
