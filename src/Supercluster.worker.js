@@ -117,10 +117,12 @@ function clusteringData({keptPointIds = [], bbox, zoom}, {log, bboxIncreasePer, 
       }
 
       if (optimizeRedraw === true) {
-        clusterHashMap[features[i].properties.composite_id] = features[i].properties.composite_id || getHashOfString(
-          childIds.sort().join(';')
-        ).toString()
-        features[i].properties.composite_id = clusterHashMap[features[i].properties.composite_id]
+        if (!clusterHashMap[features[i].properties.cluster_id]) {
+          clusterHashMap[features[i].properties.cluster_id] = getHashOfString(
+            childIds.sort().join(';')
+          ).toString()
+        }
+        features[i].properties.composite_id = clusterHashMap[features[i].properties.cluster_id]
       }
 
       if (hasKeptPoints === true) {
