@@ -1,7 +1,7 @@
 import * as L from 'leaflet'
 // import SuperclusterWorker from 'worker-loader!./SuperclusterWorker'
 // eslint-disable-next-line import/default
-import SuperclusterWorker from './SuperclusterWorker'
+import SuperclusterWorker from './Supercluster.worker'
 import {WorkerMessageManager} from './WorkerMessageManager'
 
 import './supercluster.scss'
@@ -33,7 +33,9 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       extent: 180,
       minZoom: null,
       maxZoom: null,
-      log: false
+      log: false,
+      map: null, // you can pass function as string `return {sum: props.myValue}`
+      reduce: null, // you can pass function as string `accumulated.sum += props.sum`
     }
   },
   _geoJsonLayer: null,
@@ -385,8 +387,8 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       }
     }
 
-    this.options.clusterIconFunc = this.options.clusterIconFunc || this._clusterIconFunc
-    this.options.pointIconFunc = this.options.pointIconFunc || this._pointIconFunc
+    this.options.clusterIconFunc = options.clusterIconFunc || this._clusterIconFunc
+    this.options.pointIconFunc = options.pointIconFunc || this._pointIconFunc
 
     this._keptPointIds = []
 

@@ -188,6 +188,18 @@ function getChildPointsIds(clusterId) {
 }
 
 function loadFeatures({features = []}, {supercluster}) {
+  // converts string functions body from options to function
+  if (supercluster.map) {
+    supercluster.map = new Function('props', supercluster.map)
+  } else {
+    delete supercluster.map
+  }
+  if (supercluster.reduce) {
+    supercluster.reduce = new Function('accumulated', 'props', supercluster.reduce)
+  } else {
+    delete supercluster.reduce
+  }
+
   cluster = new Supercluster(supercluster)
   cluster.load(features)
   lastLoadedFeatures = features

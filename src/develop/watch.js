@@ -7,6 +7,8 @@ import 'leaflet-measure/dist/leaflet-measure.css'
 import './watch.scss'
 
 import {SuperclusterGroup} from '../SuperclusterGroup'
+// import {SuperclusterGroup} from '../../dist/leaflet-superclaster'
+// import '../../dist/supercluster.css'
 
 class Map {
   constructor (el) {
@@ -34,6 +36,7 @@ class Map {
       maxMarkersInClusterOnOnePoint: 50,
       log: true,
       supercluster: {
+        reduce: `props.reduced = true`,
         log: true
       }
     }).addTo(this.map)

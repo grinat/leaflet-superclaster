@@ -645,7 +645,7 @@ function supercluster_getY(p) {
     return p.y;
 }
 
-// CONCATENATED MODULE: ./src/SuperclusterWorker.js
+// CONCATENATED MODULE: ./src/Supercluster.worker.js
 
 
 let cluster = null
@@ -836,6 +836,18 @@ function getChildPointsIds(clusterId) {
 }
 
 function loadFeatures({features = []}, {supercluster}) {
+  // converts string functions body from options to function
+  if (supercluster.map) {
+    supercluster.map = new Function('props', supercluster.map)
+  } else {
+    delete supercluster.map
+  }
+  if (supercluster.reduce) {
+    supercluster.reduce = new Function('accumulated', 'props', supercluster.reduce)
+  } else {
+    delete supercluster.reduce
+  }
+
   cluster = new supercluster_Supercluster(supercluster)
   cluster.load(features)
   lastLoadedFeatures = features
@@ -848,4 +860,4 @@ function loadFeatures({features = []}, {supercluster}) {
 
 /***/ })
 /******/ ]);
-//# sourceMappingURL=540d95081284d1625a96.worker.js.map
+//# sourceMappingURL=leaflet-superclaster.worker.js.map
