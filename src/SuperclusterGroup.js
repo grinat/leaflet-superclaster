@@ -43,6 +43,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _map: null,
   _keptPointIds: [],
   _workerMessageManager: null,
+  _zoomedClusterIdMap: {},
   _initWorker () {
     this._workerMessageManager = new WorkerMessageManager({
       onEnd: () => this.fire('end'),
@@ -151,7 +152,14 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
           clusterId,
           latlng
         })
+
+        if (this.options.animated) {
+          this._addClassToIcon(layer, 'expansion-zoom')
+          this._zoomedClusterIdMap[clusterId] = layer
+        }
       }
+
+      this._onClusterClick(null, layer)
     } else {
       this._onPointClick(null, layer)
     }
@@ -163,6 +171,14 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
    */
   _onPointClick (parentLayer, layer) {
     this.fire('point.click', {parentLayer, layer})
+  },
+  /**
+   * @param parentLayer - exist if click by subcluster
+   * @param layer - cluster layer
+   * @private
+   */
+  _onClusterClick (parentLayer, layer) {
+    this.fire('cluster.click', {parentLayer, layer})
   },
   _zoomEnd () {
     this._clusteringData()
@@ -183,6 +199,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   },
   loadGeoJsonData (featuresOrFutureCollection) {
     this._workerMessageManager.clean()
+    this._zoomedClusterIdMap = {}
 
     let features = []
     if (Array.isArray(featuresOrFutureCollection)) {
@@ -246,8 +263,13 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       this._map.setView(bounds.getCenter())
     }
   },
-  _expansionZoom ({latlng, zoom}) {
+  _expansionZoom ({latlng, zoom, clusterId}) {
     this._map.setView(latlng, zoom)
+
+    if (this.options.animated && this._zoomedClusterIdMap[clusterId]) {
+      const layer = this._zoomedClusterIdMap[clusterId]
+      this._addClassToIcon(layer, 'zoomed')
+    }
   },
   _drawItems (features, zoom) {
     const currentZoom = this._map.getZoom()
@@ -511,6 +533,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       if (layer instanceof L.Marker) {
         if (layer.feature.properties.subCluster) {
           this._toggleSubCluster(layer)
+          this._onClusterClick(parentLayer, layer)
         } else {
           this._onPointClick(parentLayer, layer)
         }

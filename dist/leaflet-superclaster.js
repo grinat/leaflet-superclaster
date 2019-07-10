@@ -334,6 +334,7 @@ var SuperclusterGroup = external_commonjs_leaflet_commonjs2_leaflet_amd_leaflet_
   _map: null,
   _keptPointIds: [],
   _workerMessageManager: null,
+  _zoomedClusterIdMap: {},
   _initWorker: function _initWorker() {
     var _this = this;
 
@@ -484,7 +485,15 @@ var SuperclusterGroup = external_commonjs_leaflet_commonjs2_leaflet_amd_leaflet_
           clusterId: clusterId,
           latlng: latlng
         });
+
+        if (this.options.animated) {
+          this._addClassToIcon(layer, 'expansion-zoom');
+
+          this._zoomedClusterIdMap[clusterId] = layer;
+        }
       }
+
+      this._onClusterClick(null, layer);
     } else {
       this._onPointClick(null, layer);
     }
@@ -497,6 +506,18 @@ var SuperclusterGroup = external_commonjs_leaflet_commonjs2_leaflet_amd_leaflet_
    */
   _onPointClick: function _onPointClick(parentLayer, layer) {
     this.fire('point.click', {
+      parentLayer: parentLayer,
+      layer: layer
+    });
+  },
+
+  /**
+   * @param parentLayer - exist if click by subcluster
+   * @param layer - cluster layer
+   * @private
+   */
+  _onClusterClick: function _onClusterClick(parentLayer, layer) {
+    this.fire('cluster.click', {
       parentLayer: parentLayer,
       layer: layer
     });
@@ -523,6 +544,7 @@ var SuperclusterGroup = external_commonjs_leaflet_commonjs2_leaflet_amd_leaflet_
   loadGeoJsonData: function loadGeoJsonData(featuresOrFutureCollection) {
     this._workerMessageManager.clean();
 
+    this._zoomedClusterIdMap = {};
     var features = [];
 
     if (Array.isArray(featuresOrFutureCollection)) {
@@ -602,9 +624,16 @@ var SuperclusterGroup = external_commonjs_leaflet_commonjs2_leaflet_amd_leaflet_
   },
   _expansionZoom: function _expansionZoom(_ref7) {
     var latlng = _ref7.latlng,
-        zoom = _ref7.zoom;
+        zoom = _ref7.zoom,
+        clusterId = _ref7.clusterId;
 
     this._map.setView(latlng, zoom);
+
+    if (this.options.animated && this._zoomedClusterIdMap[clusterId]) {
+      var layer = this._zoomedClusterIdMap[clusterId];
+
+      this._addClassToIcon(layer, 'zoomed');
+    }
   },
   _drawItems: function _drawItems(features, zoom) {
     var _this4 = this;
@@ -876,6 +905,8 @@ var SuperclusterGroup = external_commonjs_leaflet_commonjs2_leaflet_amd_leaflet_
       if (layer instanceof external_commonjs_leaflet_commonjs2_leaflet_amd_leaflet_root_L_["Marker"]) {
         if (layer.feature.properties.subCluster) {
           _this5._toggleSubCluster(layer);
+
+          _this5._onClusterClick(parentLayer, layer);
         } else {
           _this5._onPointClick(parentLayer, layer);
         }

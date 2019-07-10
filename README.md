@@ -60,6 +60,7 @@ unKeepPoint(id) -
 | name            | params                     | desciption |
 | -------------   |:-------------:             | -----:|
 | point.click     | parentLayer, layer, target | Fired on click by point |
+| cluster.click     | parentLayer, layer, target | Fired on click by cluster |
 | layer.updated   | layer, target              | fired on layer position(lat, lng) was updated |
 | draw            | layer, target                      | fired after markers draw, return layers with markers |
 | end            |                       | all data in worker executed |
