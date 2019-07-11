@@ -1,4 +1,7 @@
 // entrypoint for develop in watch mode only
+import 'core-js/es/promise'
+import 'whatwg-fetch'
+
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet-measure'
@@ -13,6 +16,7 @@ import {SuperclusterGroup} from '../SuperclusterGroup'
 class Map {
   constructor (el) {
     this.map = L.map(el).setView([47, 2], 7)
+    this.serverURL = `${window.location.protocol}//${window.location.hostname}:2002`
 
     L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
       maxZoom: 18,
@@ -79,7 +83,7 @@ class Map {
   }
 
   loadMoved () {
-    fetch('http://localhost:2002/moved-markers')
+    fetch(this.serverURL + '/moved-markers')
       .then(r => r.json())
       .then(features => {
         console.time('loadMoved')
@@ -99,7 +103,7 @@ class Map {
   }
 
   loadStatic () {
-    fetch('http://localhost:2002/static-markers')
+    fetch(this.serverURL + '/static-markers')
       .then(r => r.json())
       .then(features => {
         console.time('loadStatic')

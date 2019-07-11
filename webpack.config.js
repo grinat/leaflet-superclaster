@@ -1,6 +1,6 @@
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
-const TerserPlugin = require('terser-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin')
 const webpack = require('webpack')
 const path = require('path')
 
@@ -20,6 +20,9 @@ module.exports = {
     bundle: [
       prod ? './src/SuperclusterGroup.js' : './src/develop/watch.js'
     ]
+  },
+  devServer: {
+    host: '0.0.0.0'
   },
   resolve: {
     extensions: ['.js']
@@ -115,20 +118,16 @@ module.exports = {
   ],
   externals,
   optimization: {
-    minimize: false,
-    /*
-    // source-map not working with TerserPlugin
+    // minimize: false,
     minimizer: [
-      new TerserPlugin({
-        terserOptions: {
-          compress: {
-            evaluate: false,
-            // drop_console: true
-          }
+      new UglifyJsPlugin({
+        sourceMap: true,
+        uglifyOptions: {
+          evaluate: false,
+          // drop_console: true
         }
       })
     ]
-    */
   },
   devtool: 'source-map'
 }

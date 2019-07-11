@@ -1,3 +1,5 @@
+import 'core-js/es/object'
+
 import * as L from 'leaflet'
 // import SuperclusterWorker from 'worker-loader!./SuperclusterWorker'
 // eslint-disable-next-line import/default

@@ -1,4 +1,5 @@
-import '@babel/polyfill'
+import 'core-js/stable/symbol'
+import 'core-js/stable/weak-map'
 
 import Supercluster from 'supercluster'
 
