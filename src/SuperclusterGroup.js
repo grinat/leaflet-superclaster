@@ -377,7 +377,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
       icon: this.options.pointIconFunc(feature, latlng)
     })
 
-    this.fire('layer.created', {layer})
+    this.fire('layer.created', {layer, feature})
 
     return layer
   },

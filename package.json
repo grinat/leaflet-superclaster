@@ -1,6 +1,6 @@
 {
   "name": "leaflet-superclaster",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "description": "Leaflet binding for supercluster",
   "main": "dist/leaflet-superclaster.js",
   "scripts": {
