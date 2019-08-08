@@ -367,19 +367,19 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     }
   },
   _pointToLayer (feature, latlng) {
-    const isCluster = feature.properties.subCluster || feature.properties.cluster
+    const isCluster = !!(feature.properties.subCluster || feature.properties.cluster)
 
-    if (isCluster) {
-      return L.marker(latlng, {
-        zIndexOffset: this.options.clusterzIndexOffset,
-        icon: this.options.clusterIconFunc(feature, latlng)
-      })
-    }
-
-    return L.marker(latlng, {
+    const layer = isCluster ? L.marker(latlng, {
+      zIndexOffset: this.options.clusterzIndexOffset,
+      icon: this.options.clusterIconFunc(feature, latlng)
+    }) : L.marker(latlng, {
       zIndexOffset: this.options.pointzIndexOffset,
       icon: this.options.pointIconFunc(feature, latlng)
     })
+
+    this.fire('layer.created', {layer})
+
+    return layer
   },
   _clusterIconFunc (feature) {
     return new L.DivIcon({
