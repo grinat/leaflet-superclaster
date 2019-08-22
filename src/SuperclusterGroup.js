@@ -46,6 +46,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _keptPointIds: [],
   _workerMessageManager: null,
   _zoomedClusterIdMap: {},
+  _instanceId: null,
   _initWorker () {
     this._workerMessageManager = new WorkerMessageManager({
       onEnd: () => this.fire('end'),
@@ -75,6 +76,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
         }
         break
       case 'loadFeatures':
+        this._instanceId = data.instanceId
         this._clusteringData(data)
         break
       case 'expansionZoom':
@@ -136,7 +138,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     this._geoJsonLayer.removeLayer(l)
   },
-  _geoJsonClick ({latlng, layer}) {
+  _geoJsonClick ({layer}) {
     if (layer.feature.properties.cluster) {
       // on cluster click
       const isMaxZoom = this._map.getZoom() >= this._map.getMaxZoom()
@@ -147,12 +149,13 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
         this._closeCluster(layer)
       } else if (isMaxZoom === true) {
         this._sendMessage('pointsInCluster', {
-          clusterId
+          clusterId,
+          ...this._getAroundStateInformation(layer)
         })
       } else {
         this._sendMessage('expansionZoom', {
           clusterId,
-          latlng
+          ...this._getAroundStateInformation(layer)
         })
 
         if (this.options.animated) {
@@ -188,14 +191,19 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _moveEnd () {
     this._clusteringData()
   },
-  _clusteringData () {
+  _getMapBbox () {
     const bounds = this._map.getBounds()
-    const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]
-    const zoom = this._map.getZoom()
-
+    return [
+      bounds.getWest(),
+      bounds.getSouth(),
+      bounds.getEast(),
+      bounds.getNorth()
+    ]
+  },
+  _clusteringData () {
     this._sendMessage('clusteringData', {
-      zoom,
-      bbox,
+      zoom: this._map.getZoom(),
+      bbox: this._getMapBbox(),
       keptPointIds: this._keptPointIds
     })
   },
@@ -461,7 +469,8 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     // refresh all markers
     const clusterId = layer.feature.properties.cluster_id
     this._sendMessage('pointsInCluster', {
-      clusterId
+      clusterId,
+      ...this._getAroundStateInformation(layer)
     })
   },
   _closeCluster (layer) {
@@ -733,6 +742,15 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _removeClassFromIcon (l, name) {
     if (l._icon && l._icon.classList) {
       l._icon.classList.remove(name)
+    }
+  },
+  _getAroundStateInformation (layer) {
+    return {
+      latlng: layer.getLatLng(),
+      zoom: this._map.getZoom(),
+      instanceId: this._instanceId,
+      bbox: this._getMapBbox(),
+      compositeId: layer.feature.properties.composite_id
     }
   }
 })

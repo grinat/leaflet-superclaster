@@ -3,10 +3,13 @@ import 'core-js/stable/weak-map'
 
 import Supercluster from 'supercluster'
 
+import {getDistanceBetweenPoints, getHashOfString} from './utils'
+
 let cluster = null
 let lastLoadedFeatures = null
 let childPointsIdsMap = {}
 let clusterHashMap = {}
+let clusterInstanceId = null
 
 self.onmessage = ({data}) => {
   if (data.options.log) {
@@ -36,8 +39,61 @@ self.onmessage = ({data}) => {
   }
 }
 
-function pointsInCluster({clusterId}) {
-  const features = cluster.getLeaves(clusterId, Infinity)
+function findNearestOrSamePoint({latlng, zoom, bbox, compositeId}) {
+  const virtualBbox = bbox
+
+  let prev = null
+  let prevDist = null
+  const nearFeatures = cluster.getClusters(virtualBbox, zoom)
+  for (const feat of nearFeatures) {
+    if (feat.properties.cluster) {
+      // try find by composite id
+      const clusterId = feat.properties.cluster_id
+      const childIds = getChildPointsIds(clusterId)
+      const calcCompId = getCompositeId(clusterId, childIds)
+
+      if (calcCompId === compositeId) {
+        return feat.id
+      }
+
+      // if search fail, get nearest point
+      const distance = getDistanceBetweenPoints(
+        feat.geometry.coordinates,
+        [latlng.lng, latlng.lat]
+      )
+
+      if (prev === null) {
+        prev = feat
+      } else {
+        if (distance < prevDist) {
+          prev = feat
+          prevDist = distance
+        }
+      }
+    }
+  }
+
+  if (prev !== null) {
+    return prev.id
+  }
+
+  return null
+}
+
+function getCurrentOnNearestClusterId({instanceId, clusterId, latlng, zoom, bbox, compositeId}) {
+  // for prevent error no cluster with specific id if data reloaded
+  // we search nearest cluster if instacnse was reloaded
+  if (clusterInstanceId !== instanceId) {
+    return findNearestOrSamePoint({latlng, zoom, bbox, compositeId})
+  }
+  return clusterId
+}
+
+function pointsInCluster({clusterId, instanceId, latlng, zoom, bbox, compositeId}) {
+  const features = cluster.getLeaves(
+    getCurrentOnNearestClusterId({instanceId, clusterId, latlng, zoom, bbox, compositeId}),
+    Infinity
+  )
 
   sendMessage('pointsInCluster', {
     features,
@@ -45,31 +101,16 @@ function pointsInCluster({clusterId}) {
   })
 }
 
-function expansionZoom({clusterId, latlng}) {
-  const zoom = cluster.getClusterExpansionZoom(clusterId)
+function expansionZoom({clusterId, instanceId, latlng, zoom, bbox, compositeId}) {
+  const zoomMapTo = cluster.getClusterExpansionZoom(
+    getCurrentOnNearestClusterId({instanceId, clusterId, latlng, zoom, bbox, compositeId})
+  )
+
   sendMessage('expansionZoom', {
     latlng,
-    zoom,
+    zoom: zoomMapTo,
     clusterId
   })
-}
-
-/**
- * @link https://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
- * @param str
- * @returns {number}
- */
-function getHashOfString(str) {
-  let hash = 0
-  let i
-  let chr
-  if (str.length === 0) return hash
-  for (i = 0; i < str.length; i++) {
-    chr   = str.charCodeAt(i)
-    hash  = ((hash << 5) - hash) + chr
-    hash |= 0 // Convert to 32bit integer
-  }
-  return hash
 }
 
 function sendMessage (action, data = {}) {
@@ -107,23 +148,18 @@ function clusteringData({keptPointIds = [], bbox, zoom}, {log, bboxIncreasePer, 
   const fLen = features.length
   const ids = []
   for (let i = 0; i < fLen; i++) {
-    features[i].properties.composite_id = features[i].properties.cluster_id
+    const clusterId = features[i].properties.cluster_id
+    features[i].properties.composite_id = clusterId
 
     if (features[i].properties.cluster && grabChild === true) {
-      childPointsIdsMap[features[i].properties.cluster_id] = childPointsIdsMap[features[i].properties.cluster_id] || getChildPointsIds(features[i].properties.cluster_id)
-      const childIds = childPointsIdsMap[features[i].properties.cluster_id]
+      const childIds = getChildPointsIds(clusterId)
 
       if (appendChildIdsToCluster === true) {
         features[i].properties.childIds = childIds
       }
 
       if (optimizeRedraw === true) {
-        if (!clusterHashMap[features[i].properties.cluster_id]) {
-          clusterHashMap[features[i].properties.cluster_id] = getHashOfString(
-            childIds.sort().join(';')
-          ).toString()
-        }
-        features[i].properties.composite_id = clusterHashMap[features[i].properties.cluster_id]
+        features[i].properties.composite_id = getCompositeId(clusterId, childIds)
       }
 
       if (hasKeptPoints === true) {
@@ -192,6 +228,18 @@ function getChildPointsIds(clusterId) {
   return childPointsIdsMap[clusterId]
 }
 
+function getCompositeId(clusterId, childIds) {
+  if (clusterHashMap[clusterId]) {
+    return clusterHashMap[clusterId]
+  }
+
+  clusterHashMap[clusterId] = getHashOfString(
+    childIds.sort().join(';')
+  ).toString()
+
+  return clusterHashMap[clusterId]
+}
+
 function loadFeatures({features = []}, {supercluster}) {
   // converts string functions body from options to function
   if (supercluster.map) {
@@ -210,6 +258,7 @@ function loadFeatures({features = []}, {supercluster}) {
   lastLoadedFeatures = features
   childPointsIdsMap = {}
   clusterHashMap = {}
-  sendMessage('loadFeatures')
+  clusterInstanceId = +new Date()
+  sendMessage('loadFeatures', {instanceId: clusterInstanceId})
 }
 
