@@ -1,6 +1,6 @@
 # leaflet-superclaster
 
-[![CircleCI](https://circleci.com/gh/grinat/supercluster/tree/master.svg?style=svg)](https://circleci.com/gh/grinat/supercluster/tree/master)
+[![CircleCI](https://circleci.com/gh/grinat/leaflet-superclaster/tree/master.svg?style=svg)](https://circleci.com/gh/grinat/leaflet-superclaster/tree/master)
 
 Leaflet binding for [supercluster](https://github.com/mapbox/supercluster) 
 
