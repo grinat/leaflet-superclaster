@@ -1,0 +1,48 @@
+version: 2
+
+defaults: &defaults
+  working_directory: ~/repo
+  docker:
+    - image: cypress/base:10
+
+jobs:
+  build-n-test:
+    <<: *defaults
+    steps:
+      - checkout
+      - run: npm install
+      - run: npm run build
+      - run: npm run test:e2e
+
+      - persist_to_workspace:
+          root: ~/repo
+          paths: .
+      - store_artifacts:
+          path: tests/e2e/screenshots
+      - store_artifacts:
+          path: tests/e2e/videos
+  publish:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ~/repo
+
+      - run: echo "//registry.npmjs.org/:_authToken=$npm_TOKEN" > ~/repo/.npmrc
+      - run: npm publish
+
+workflows:
+  version: 2
+  deploy:
+    jobs:
+      - build-n-test:
+          filters:  # required since `publish` has tag filters AND requires `build`
+            tags:
+              only: /.*/
+      - publish:
+          requires:
+            - build-n-test
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
