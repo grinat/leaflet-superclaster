@@ -68,6 +68,7 @@
   .supercluster{
     &.animate-move {
       transition: none;
+      animation: none;
     }
   }
 }

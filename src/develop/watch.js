@@ -42,7 +42,8 @@ class Map {
       supercluster: {
         reduce: `props.reduced = true`,
         log: true
-      }
+      },
+      animated: true
     }).addTo(this.map)
     this.superclusterGroup.on('point.click', ({layer}) => {
       let popup = layer.getPopup()

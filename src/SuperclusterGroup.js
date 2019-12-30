@@ -129,7 +129,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     if (this.options.animated === true) {
       this._geoJsonLayer.on('layeradd', ({layer}) => {
-        this._addClassToIcon(layer, 'animate-add')
+        this._addClassToIcon(layer, 'animate-add', true)
       })
     }
   },
@@ -159,7 +159,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
         })
 
         if (this.options.animated) {
-          this._addClassToIcon(layer, 'expansion-zoom')
+          this._addClassToIcon(layer, 'expansion-zoom', true)
           this._zoomedClusterIdMap[clusterId] = layer
         }
       }
@@ -278,7 +278,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     if (this.options.animated && this._zoomedClusterIdMap[clusterId]) {
       const layer = this._zoomedClusterIdMap[clusterId]
-      this._addClassToIcon(layer, 'zoomed')
+      this._addClassToIcon(layer, 'zoomed', true)
     }
   },
   _drawItems (features, zoom) {
@@ -345,10 +345,15 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _removeOrUpdateLayer (l, featureIdMap, propKey) {
     const id = l.feature.properties[propKey]
     if (featureIdMap[id]) {
-      // update marker pos
-      l.setLatLng(
-        new L.LatLng(featureIdMap[id].geometry.coordinates[1], featureIdMap[id].geometry.coordinates[0])
+      const posChanged = l.feature && (
+        l.feature.geometry.coordinates[0] !== featureIdMap[id].geometry.coordinates[0]
+        && l.feature.geometry.coordinates[1] !== featureIdMap[id].geometry.coordinates[1]
       )
+
+      // update marker pos
+      if (posChanged === true) {
+        l.setLatLng(new L.LatLng(featureIdMap[id].geometry.coordinates[1], featureIdMap[id].geometry.coordinates[0]))
+      }
 
       if (l.feature.properties.cluster && l.feature.properties.point_count !== featureIdMap[id].properties.point_count) {
         // update feature info
@@ -366,7 +371,13 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
       this.fire('layer.updated', {layer: l})
 
-      this.options.animated && this._addClassToIcon(l, 'animate-move')
+      if (this.options.animated) {
+        if (posChanged === true) {
+          this._addClassToIcon(l, 'animate-move', true)
+        } else {
+          this._removeClassFromIcon(l, 'animate-move')
+        }
+      }
 
       this._updateMarkersInOpenedClusterLayer(l)
     } else {
@@ -734,9 +745,18 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
 
     return legs
   },
-  _addClassToIcon (l, name) {
+  _addClassToIcon (l, name, removeOnTransitionEnd = false) {
     if (l._icon && l._icon.classList) {
       l._icon.classList.add(name)
+
+      if (removeOnTransitionEnd) {
+        const removeClass = () => {
+          this._removeClassFromIcon(l, name)
+          L.DomEvent.off(l._icon, 'transitionend', removeClass)
+        }
+
+        L.DomEvent.on(l._icon, 'transitionend', removeClass)
+      }
     }
   },
   _removeClassFromIcon (l, name) {
