@@ -43,7 +43,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _geoJsonLayer: null,
   _worker: null,
   _map: null,
-  _keptPointIds: [],
+  _keptPointIds: [], // points that are not erased even out of map bounds
   _workerMessageManager: null,
   _zoomedClusterIdMap: {},
   _instanceId: null,
@@ -141,7 +141,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _geoJsonClick ({layer}) {
     if (layer.feature.properties.cluster) {
       // on cluster click
-      const isMaxZoom = this._map.getZoom() >= this._map.getMaxZoom()
+      const isMaxZoom = this._getZoom() >= this._map.getMaxZoom()
       const clusterId = layer.feature.properties.cluster_id
       const clusterOpened = !!layer._openedClusterLayer
 
@@ -202,7 +202,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   },
   _clusteringData () {
     this._sendMessage('clusteringData', {
-      zoom: this._map.getZoom(),
+      zoom: this._getZoom(),
       bbox: this._getMapBbox(),
       keptPointIds: this._keptPointIds
     })
@@ -282,7 +282,7 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
     }
   },
   _drawItems (features, zoom) {
-    const currentZoom = this._map.getZoom()
+    const currentZoom = this._getZoom()
     if (currentZoom !== zoom) {
       // skip redraw data if user fast change zoom
       return
@@ -767,11 +767,16 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _getAroundStateInformation (layer) {
     return {
       latlng: layer.getLatLng(),
-      zoom: this._map.getZoom(),
+      zoom: this._getZoom(),
       instanceId: this._instanceId,
       bbox: this._getMapBbox(),
       compositeId: layer.feature.properties.composite_id
     }
-  }
+  },
+  _getZoom () {
+    // on same mobile device this._map.getZoom() can be float, ex: 8.34234324
+    // but cluster tree accept only int, ex: 8
+    return Math.floor(this._map.getZoom())
+  },
 })
 

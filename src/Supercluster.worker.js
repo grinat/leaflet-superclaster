@@ -163,12 +163,11 @@ function clusteringData({keptPointIds = [], bbox, zoom}, {log, bboxIncreasePer, 
       }
 
       if (hasKeptPoints === true) {
-        // TODO to for
-        keptPointIds.forEach(id => {
+        for (const id of keptPointIds) {
           if (childIds.indexOf(id) > -1) {
             features[i].properties.point_count--
           }
-        })
+        }
       }
     }
 
@@ -178,8 +177,7 @@ function clusteringData({keptPointIds = [], bbox, zoom}, {log, bboxIncreasePer, 
   }
 
   if (grabChild) {
-    // TODO to for
-    keptPointIds.forEach(id => {
+    for (const id of keptPointIds) {
       if (ids.indexOf(id) === -1 && lastLoadedFeatures) {
         // find point and return as feature
         const len = lastLoadedFeatures.length
@@ -190,7 +188,7 @@ function clusteringData({keptPointIds = [], bbox, zoom}, {log, bboxIncreasePer, 
           }
         }
       }
-    })
+    }
   }
 
   log && console.log('single markers ids', ids, 'keptPointIds', keptPointIds)

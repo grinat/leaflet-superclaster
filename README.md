@@ -2,11 +2,11 @@
 
 [![CircleCI](https://circleci.com/gh/grinat/leaflet-superclaster/tree/master.svg?style=svg)](https://circleci.com/gh/grinat/leaflet-superclaster/tree/master)
 
-Leaflet binding for [supercluster](https://github.com/mapbox/supercluster) 
+Leaflet binding for [supercluster](https://github.com/mapbox/supercluster)
 
 | move         | static        |
 | -------------   |:-------------:|
-| ![](examples/move.gif) | ![](examples/static.gif)| 
+| ![](examples/move.gif) | ![](examples/static.gif)|
 | [example](https://grinat.github.io/leaflet-superclaster/examples/static.html) | [example](https://grinat.github.io/leaflet-superclaster/examples/move.html)  |
 
 
@@ -35,7 +35,7 @@ this.superclusterGroup.on('layer.updated', function ({layer}) {
     popup.setContent(JSON.stringify(layer.feature.properties))
   }
 })
-          
+
 const features = [{
   properties: {
     // !! id in properties are required
@@ -53,7 +53,7 @@ this.superclusterGroup.loadGeoJsonData(features)
 ```
 loadGeoJsonData(features) - set markers positions
 keepPoint(id) - Save point id for keep in view useful if appended popup with keepView optio
-unKeepPoint(id) - 
+unKeepPoint(id)
 ```
 
 ## Events
