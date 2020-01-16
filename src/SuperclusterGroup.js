@@ -345,9 +345,9 @@ export const SuperclusterGroup = L.SuperclusterGroup = L.FeatureGroup.extend({
   _removeOrUpdateLayer (l, featureIdMap, propKey) {
     const id = l.feature.properties[propKey]
     if (featureIdMap[id]) {
-      const posChanged = l.feature && (
+      const posChanged = (
         l.feature.geometry.coordinates[0] !== featureIdMap[id].geometry.coordinates[0]
-        && l.feature.geometry.coordinates[1] !== featureIdMap[id].geometry.coordinates[1]
+        || l.feature.geometry.coordinates[1] !== featureIdMap[id].geometry.coordinates[1]
       )
 
       // update marker pos
