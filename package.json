@@ -34,11 +34,11 @@
     "babel-eslint": "^10.0.3",
     "babel-loader": "^8.0.5",
     "body-parser": "^1.19.0",
-    "concurrently": "^4.1.2",
+    "concurrently": "^5.2.0",
     "cors": "^2.8.5",
     "cross-env": "^5.2.1",
     "css-loader": "^2.1.1",
-    "cypress": "^3.8.1",
+    "cypress": "^4.6.0",
     "eslint": "^5.16.0",
     "eslint-plugin-import": "^2.19.1",
     "express": "^4.17.1",
@@ -47,8 +47,8 @@
     "leaflet": "^1.6.0",
     "leaflet-measure": "^3.1.0",
     "mini-css-extract-plugin": "^0.6.0",
-    "node-sass": "^4.13.0",
-    "nodemon": "^1.19.4",
+    "node-sass": "^4.14.1",
+    "nodemon": "^2.0.4",
     "rimraf": "^2.7.1",
     "sass-loader": "^7.3.1",
     "start-server-and-test": "^1.10.6",
@@ -57,7 +57,7 @@
     "url-loader": "^2.3.0",
     "webpack": "^4.41.5",
     "webpack-cli": "^3.3.10",
-    "webpack-dev-server": "^3.10.1",
+    "webpack-dev-server": "^3.11.0",
     "whatwg-fetch": "^3.0.0"
   }
 }

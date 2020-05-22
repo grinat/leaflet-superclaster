@@ -1,3 +1,4 @@
+/*global state*/
 // entrypoint for develop in watch mode only
 import 'core-js/es/promise'
 import 'whatwg-fetch'
